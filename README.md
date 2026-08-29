@@ -2,6 +2,8 @@
 
 Installe et configure automatiquement le serveur MCP [ollama-mcp](https://github.com/rawveg/ollama-mcp) pour connecter Ollama a Claude Code sur Windows.
 
+> 🥗 **Nouveau** : [CaloriePhoto](calorie-app/README.md), une application mobile qui calcule les calories d'un repas a partir d'une photo, avec un modele de vision Ollama local.
+
 ## Installation en une commande
 
 Ouvrez **PowerShell** et executez :
