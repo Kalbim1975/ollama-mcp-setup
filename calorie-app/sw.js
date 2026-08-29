@@ -1,6 +1,6 @@
 // Service worker : met en cache l'interface pour un lancement hors ligne.
 // Les appels à l'API Ollama ne sont jamais mis en cache.
-const CACHE = "caloriephoto-v1";
+const CACHE = "caloriephoto-v2";
 const RESSOURCES = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (ev) => {

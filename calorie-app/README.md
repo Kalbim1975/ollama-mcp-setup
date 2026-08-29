@@ -1,19 +1,40 @@
 # 🥗 CaloriePhoto — Calcul de calories à partir d'une photo
 
-Application mobile (PWA) qui estime les calories d'un repas à partir d'une simple photo,
-grâce à un modèle de vision **Ollama** tournant sur votre ordinateur. Aucune donnée
-n'est envoyée sur Internet : tout reste sur votre réseau local.
+Application mobile (PWA) qui estime les calories d'un repas à partir d'une simple photo.
+Deux moteurs d'analyse au choix dans ⚙️ Réglages :
+
+- **Claude (en ligne)** : l'application appelle l'API Anthropic (vision) avec votre clé API.
+  Fonctionne partout, aucune installation — il suffit d'ouvrir la page.
+- **Ollama (local, gratuit)** : un modèle de vision tourne sur votre ordinateur ;
+  rien ne quitte votre réseau local.
+
+## 🚀 Utilisation immédiate (mode Claude)
+
+L'application est déployée automatiquement sur GitHub Pages :
+
+**https://kalbim1975.github.io/ollama-mcp-setup/**
+
+1. Ouvrez cette adresse sur votre téléphone
+2. Dans **⚙️ Réglages**, collez votre clé API Anthropic
+   (créée sur [console.anthropic.com](https://console.anthropic.com/))
+3. Photographiez votre repas — c'est tout
+4. (Optionnel) « Ajouter à l'écran d'accueil » pour l'installer comme une vraie application
+
+> La clé API est stockée uniquement dans le navigateur de votre téléphone et n'est envoyée
+> qu'à l'API Anthropic. Réservez-la à votre appareil personnel.
 
 ## Fonctionnalités
 
 - 📷 **Photo du repas** avec l'appareil photo du téléphone
-- 🤖 **Analyse par IA locale** (llava, moondream, llama3.2-vision…) : aliments, portions, calories
+- 🤖 **Analyse par IA** (Claude ou modèle local llava, moondream, llama3.2-vision…) : aliments, portions, calories
 - ✏️ **Calories modifiables** avant validation
 - 🧮 **Macros** : protéines, glucides, lipides
 - 📒 **Journal quotidien** avec objectif calorique et barre de progression
 - 📲 **Installable** sur l'écran d'accueil (Android et iPhone), fonctionne hors ligne (interface)
 
-## Prérequis
+## Mode Ollama (local, gratuit)
+
+### Prérequis
 
 1. [Ollama](https://ollama.com/download) installé sur votre ordinateur
 2. Un modèle de vision téléchargé :
@@ -24,7 +45,7 @@ n'est envoyée sur Internet : tout reste sur votre réseau local.
 
 3. Le téléphone et l'ordinateur sur le **même réseau Wi-Fi**
 
-## Démarrage
+### Démarrage
 
 ### 1. Lancer Ollama en acceptant le réseau local
 

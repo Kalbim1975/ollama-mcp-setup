@@ -217,18 +217,44 @@
 <!-- Réglages -->
 <dialog id="dlgReglages">
   <h2>Réglages</h2>
-  <label for="champHost">Adresse du serveur Ollama</label>
-  <input id="champHost" type="url" placeholder="http://192.168.1.10:11434" inputmode="url">
-  <label for="champModele">Modèle de vision</label>
-  <select id="champModele"></select>
+  <label for="champMode">Moteur d'analyse</label>
+  <select id="champMode">
+    <option value="claude">Claude (en ligne, clé API)</option>
+    <option value="ollama">Ollama (local, gratuit)</option>
+  </select>
+
+  <div id="zoneClaude">
+    <label for="champCleApi">Clé API Anthropic</label>
+    <input id="champCleApi" type="password" placeholder="sk-ant-…" autocomplete="off">
+    <label for="champModeleClaude">Modèle Claude</label>
+    <select id="champModeleClaude">
+      <option value="claude-opus-5">Claude Opus 5 (recommandé)</option>
+      <option value="claude-sonnet-5">Claude Sonnet 5</option>
+      <option value="claude-haiku-4-5">Claude Haiku 4.5 (économique)</option>
+    </select>
+    <p class="note">
+      Créez une clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.
+      La clé reste stockée uniquement sur ce téléphone et n'est envoyée qu'à l'API Anthropic.
+      Ne l'utilisez que sur votre appareil personnel.
+    </p>
+  </div>
+
+  <div id="zoneOllama">
+    <label for="champHost">Adresse du serveur Ollama</label>
+    <input id="champHost" type="url" placeholder="http://192.168.1.10:11434" inputmode="url">
+    <label for="champModele">Modèle de vision</label>
+    <select id="champModele"></select>
+    <p class="note">
+      Le serveur Ollama doit tourner sur votre ordinateur avec un modèle de vision
+      (ex. <code>llava</code>) et accepter les requêtes du réseau local :
+      <code>OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=* ollama serve</code>.
+      Votre téléphone doit être sur le même Wi-Fi, et l'application servie en
+      <code>http://</code> (pas https) pour pouvoir joindre Ollama.
+    </p>
+  </div>
+
   <label for="champObjectif">Objectif quotidien (kcal)</label>
   <input id="champObjectif" type="number" min="500" max="10000" step="50">
-  <p class="note">
-    Le serveur Ollama doit tourner sur votre ordinateur avec un modèle de vision
-    (ex. <code>llava</code>) et accepter les requêtes du réseau local :
-    <code>OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=* ollama serve</code>.
-    Votre téléphone doit être sur le même Wi-Fi.
-  </p>
   <div class="ligne-actions">
     <button class="btn secondaire" id="btnFermerReglages">Fermer</button>
     <button class="btn principal" id="btnSauverReglages">Enregistrer</button>
@@ -241,6 +267,11 @@
 // ---------- Réglages ----------
 const MODELES_VISION_CONNUS = ["llava", "llava:13b", "llava-phi3", "bakllava", "moondream", "minicpm-v", "llama3.2-vision", "qwen2.5vl"];
 const reglages = {
+  // Sur une page https (ex. GitHub Pages), un serveur Ollama en http est
+  // inaccessible (contenu mixte) : Claude est alors le mode par défaut.
+  mode: localStorage.getItem("cp_mode") || (location.protocol === "https:" ? "claude" : "ollama"),
+  cleApi: localStorage.getItem("cp_cle_api") || "",
+  modeleClaude: localStorage.getItem("cp_modele_claude") || "claude-opus-5",
   host: localStorage.getItem("cp_host") || "http://127.0.0.1:11434",
   modele: localStorage.getItem("cp_modele") || "llava",
   objectif: parseInt(localStorage.getItem("cp_objectif") || "2000", 10)
@@ -326,8 +357,10 @@ $("fichierPhoto").onchange = async (ev) => {
     repasCourant = { aliments, photo: dataUrl };
     afficherResultat(aliments);
   } catch (err) {
-    $("zoneErreur").textContent = "Échec de l'analyse : " + err.message +
-      " — Vérifiez dans ⚙️ Réglages que l'adresse du serveur Ollama est correcte et que le modèle de vision est téléchargé (ollama pull " + reglages.modele + ").";
+    const conseil = reglages.mode === "claude"
+      ? "Vérifiez dans ⚙️ Réglages que votre clé API Anthropic est renseignée et valide."
+      : "Vérifiez dans ⚙️ Réglages que l'adresse du serveur Ollama est correcte et que le modèle de vision est téléchargé (ollama pull " + reglages.modele + ").";
+    $("zoneErreur").textContent = "Échec de l'analyse : " + err.message + " — " + conseil;
     $("zoneErreur").hidden = false;
   } finally {
     $("zoneStatut").hidden = true;
@@ -359,6 +392,56 @@ Les calories sont en kcal pour la portion visible. Si aucun aliment n'est visibl
 
 async function analyserPhoto(dataUrl) {
   const base64 = dataUrl.split(",")[1];
+  const contenu = reglages.mode === "claude"
+    ? await analyserAvecClaude(base64)
+    : await analyserAvecOllama(base64);
+  return interpreterReponse(contenu);
+}
+
+async function analyserAvecClaude(base64) {
+  if (!reglages.cleApi) throw new Error("aucune clé API renseignée");
+  const ctrl = new AbortController();
+  const minuterie = setTimeout(() => ctrl.abort(), 120000);
+  let rep;
+  try {
+    rep = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": reglages.cleApi,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model: reglages.modeleClaude,
+        max_tokens: 2000,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+            { type: "text", text: PROMPT_ANALYSE }
+          ]
+        }]
+      })
+    });
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "délai dépassé (2 min)" : "API Anthropic injoignable");
+  } finally {
+    clearTimeout(minuterie);
+  }
+  if (!rep.ok) {
+    if (rep.status === 401) throw new Error("clé API invalide");
+    if (rep.status === 429) throw new Error("limite de requêtes atteinte, réessayez dans une minute");
+    const corps = await rep.text().catch(() => "");
+    throw new Error("réponse " + rep.status + (corps ? " — " + corps.slice(0, 200) : ""));
+  }
+  const donnees = await rep.json();
+  if (donnees.stop_reason === "refusal") throw new Error("l'analyse a été refusée par le modèle");
+  return (donnees.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+}
+
+async function analyserAvecOllama(base64) {
   const ctrl = new AbortController();
   const minuterie = setTimeout(() => ctrl.abort(), 180000);
   let rep;
@@ -385,7 +468,10 @@ async function analyserPhoto(dataUrl) {
     throw new Error("réponse " + rep.status + (corps ? " — " + corps.slice(0, 200) : ""));
   }
   const donnees = await rep.json();
-  const contenu = donnees.message && donnees.message.content ? donnees.message.content : "";
+  return donnees.message && donnees.message.content ? donnees.message.content : "";
+}
+
+function interpreterReponse(contenu) {
   let json;
   try {
     json = JSON.parse(contenu);
@@ -464,10 +550,21 @@ $("btnAnnuler").onclick = () => {
 };
 
 // ---------- Réglages ----------
+function majZonesMode() {
+  const claude = $("champMode").value === "claude";
+  $("zoneClaude").hidden = !claude;
+  $("zoneOllama").hidden = claude;
+}
+$("champMode").onchange = majZonesMode;
+
 $("btnReglages").onclick = async () => {
+  $("champMode").value = reglages.mode;
+  $("champCleApi").value = reglages.cleApi;
+  $("champModeleClaude").value = reglages.modeleClaude;
   $("champHost").value = reglages.host;
   $("champObjectif").value = reglages.objectif;
   remplirModeles([reglages.modele]);
+  majZonesMode();
   $("dlgReglages").showModal();
   try {
     const rep = await fetch(reglages.host.replace(/\/$/, "") + "/api/tags", { signal: AbortSignal.timeout(5000) });
@@ -490,9 +587,15 @@ function remplirModeles(noms) {
   });
 }
 $("btnSauverReglages").onclick = () => {
+  reglages.mode = $("champMode").value;
+  reglages.cleApi = $("champCleApi").value.trim();
+  reglages.modeleClaude = $("champModeleClaude").value;
   reglages.host = $("champHost").value.trim() || reglages.host;
   reglages.modele = $("champModele").value;
   reglages.objectif = Math.max(500, parseInt($("champObjectif").value, 10) || 2000);
+  localStorage.setItem("cp_mode", reglages.mode);
+  localStorage.setItem("cp_cle_api", reglages.cleApi);
+  localStorage.setItem("cp_modele_claude", reglages.modeleClaude);
   localStorage.setItem("cp_host", reglages.host);
   localStorage.setItem("cp_modele", reglages.modele);
   localStorage.setItem("cp_objectif", String(reglages.objectif));
