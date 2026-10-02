@@ -49,6 +49,17 @@ Sans interface, dans le terminal :
 .\.venv\Scripts\python.exe run_cli.py fiche_patient "Laser et sevrage alcoolique"
 ```
 
+## Exemple OpenAI (optionnel)
+
+`hello_openai.py` est un exemple minimal avec le modele `gpt-4o` d'OpenAI.
+Il demande une cle API OpenAI payante, et **les textes partent sur les serveurs d'OpenAI** :
+n'y mettez jamais de donnees de patients.
+
+```powershell
+$env:OPENAI_API_KEY = "sk-..."   # votre cle OpenAI
+.\.venv\Scripts\python.exe hello_openai.py
+```
+
 ## Fichiers
 
 | Fichier | Role |
@@ -57,6 +68,7 @@ Sans interface, dans le terminal :
 | `teams/*.json` | Equipes au format AutoGen Studio (importables aussi via la **Gallery**) |
 | `import_teams.py` | Ajoute les equipes dans AutoGen Studio deja demarre |
 | `run_cli.py` | Lance une equipe dans le terminal |
+| `hello_openai.py` | Exemple minimal avec OpenAI gpt-4o (cle API requise) |
 | `install.ps1` / `start.ps1` | Installation et demarrage sous Windows |
 
 Les conversations sont enregistrees dans `myapp/` (sur votre ordinateur uniquement).
