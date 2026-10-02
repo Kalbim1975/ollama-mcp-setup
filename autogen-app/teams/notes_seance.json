@@ -1,0 +1,97 @@
+{
+  "provider": "autogen_agentchat.teams.RoundRobinGroupChat",
+  "component_type": "team",
+  "version": 1,
+  "component_version": 1,
+  "description": "Transforme des notes brutes de seance en compte rendu structure.",
+  "label": "Compte rendu de seance",
+  "config": {
+    "participants": [
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "secretaire_medical",
+          "model_client": {
+            "provider": "autogen_ext.models.ollama.OllamaChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for Ollama hosted models.",
+            "label": "OllamaChatCompletionClient",
+            "config": {
+              "model": "llama3.1",
+              "host": "http://localhost:11434",
+              "follow_redirects": true
+            }
+          },
+          "workbench": {
+            "provider": "autogen_core.tools.StaticWorkbench",
+            "component_type": "workbench",
+            "version": 1,
+            "component_version": 1,
+            "description": "A workbench that provides a static set of tools that do not change after\n    each tool execution.",
+            "label": "StaticWorkbench",
+            "config": {
+              "tools": []
+            }
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Structure les notes de seance.",
+          "system_message": "Tu transformes des notes brutes de seance (traitement des addictions par laser) en compte rendu structure, en francais :\n- Motif / addiction traitee\n- Consommation actuelle et evolution\n- Seance realisee (zones, protocole, duree) uniquement si mentionne\n- Ressenti du patient\n- Objectifs et prochain rendez-vous\nN'ajoute aucune information absente des notes : ecris 'non precise' si besoin. Termine ta reponse par TERMINE.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}",
+          "metadata": {}
+        }
+      }
+    ],
+    "termination_condition": {
+      "provider": "autogen_agentchat.base.OrTerminationCondition",
+      "component_type": "termination",
+      "version": 1,
+      "component_version": 1,
+      "label": "OrTerminationCondition",
+      "config": {
+        "conditions": [
+          {
+            "provider": "autogen_agentchat.conditions.TextMentionTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "description": "Terminate the conversation if a specific text is mentioned.",
+            "label": "TextMentionTermination",
+            "config": {
+              "text": "TERMINE"
+            }
+          },
+          {
+            "provider": "autogen_agentchat.conditions.MaxMessageTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "description": "Terminate the conversation after a maximum number of messages have been exchanged.",
+            "label": "MaxMessageTermination",
+            "config": {
+              "max_messages": 3,
+              "include_agent_event": false
+            }
+          }
+        ]
+      }
+    },
+    "emit_team_events": false
+  }
+}

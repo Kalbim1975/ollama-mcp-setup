@@ -67,3 +67,7 @@ powershell -ExecutionPolicy Bypass -File install.ps1
                # Dans une session Claude Code, taper:
                /mcp
                ```
+
+## Application AutoGen Studio
+
+Le dossier [`autogen-app/`](autogen-app/) contient une application d'agents IA (AutoGen Studio + Ollama, 100 % locale) : fiches d'information patient a partir de PubMed et comptes rendus de seance. Voir [autogen-app/README.md](autogen-app/README.md).

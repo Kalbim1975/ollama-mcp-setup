@@ -1,0 +1,213 @@
+{
+  "provider": "autogen_agentchat.teams.RoundRobinGroupChat",
+  "component_type": "team",
+  "version": 1,
+  "component_version": 1,
+  "description": "Chercheur PubMed -> redacteur -> relecteur : produit une fiche d'information patient.",
+  "label": "Fiche patient (addictions & laser)",
+  "config": {
+    "participants": [
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "chercheur",
+          "model_client": {
+            "provider": "autogen_ext.models.ollama.OllamaChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for Ollama hosted models.",
+            "label": "OllamaChatCompletionClient",
+            "config": {
+              "model": "llama3.1",
+              "host": "http://localhost:11434",
+              "follow_redirects": true
+            }
+          },
+          "workbench": {
+            "provider": "autogen_core.tools.StaticWorkbench",
+            "component_type": "workbench",
+            "version": 1,
+            "component_version": 1,
+            "description": "A workbench that provides a static set of tools that do not change after\n    each tool execution.",
+            "label": "StaticWorkbench",
+            "config": {
+              "tools": [
+                {
+                  "provider": "autogen_core.tools.FunctionTool",
+                  "component_type": "tool",
+                  "version": 1,
+                  "component_version": 1,
+                  "description": "Create custom tools by wrapping standard Python functions.",
+                  "label": "FunctionTool",
+                  "config": {
+                    "source_code": "def recherche_pubmed(requete: str, nombre: int = 5) -> str:\n    \"\"\"Cherche des articles sur PubMed et renvoie titres, revues, annees et liens.\"\"\"\n    import json as _json\n    import urllib.parse\n    import urllib.request\n\n    base = \"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/\"\n    nombre = max(1, min(int(nombre), 10))\n    params = urllib.parse.urlencode(\n        {\"db\": \"pubmed\", \"term\": requete, \"retmax\": nombre, \"retmode\": \"json\", \"sort\": \"relevance\"}\n    )\n    try:\n        with urllib.request.urlopen(f\"{base}esearch.fcgi?{params}\", timeout=20) as r:\n            ids = _json.load(r)[\"esearchresult\"].get(\"idlist\", [])\n        if not ids:\n            return \"Aucun article trouve pour cette recherche.\"\n\n        params = urllib.parse.urlencode({\"db\": \"pubmed\", \"id\": \",\".join(ids), \"retmode\": \"json\"})\n        with urllib.request.urlopen(f\"{base}esummary.fcgi?{params}\", timeout=20) as r:\n            resultats = _json.load(r)[\"result\"]\n    except Exception as erreur:\n        return f\"PubMed inaccessible ({erreur}). Signale-le sans inventer de resultats.\"\n\n    lignes = []\n    for pmid in ids:\n        art = resultats.get(pmid, {})\n        lignes.append(\n            f\"- {art.get('title', 'Sans titre')} ({art.get('source', '?')}, \"\n            f\"{art.get('pubdate', '?')[:4]}) https://pubmed.ncbi.nlm.nih.gov/{pmid}/\"\n        )\n    return \"\\n\".join(lignes)\n",
+                    "name": "recherche_pubmed",
+                    "description": "Recherche d'articles scientifiques sur PubMed (requete en anglais).",
+                    "global_imports": [],
+                    "has_cancellation_support": false
+                  }
+                }
+              ]
+            }
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Recherche les donnees scientifiques sur PubMed.",
+          "system_message": "Tu es un assistant de recherche pour un infirmier praticien en medecine integrative qui traite les addictions (tabac, alcool, sucre...) par laser (auriculotherapie laser, photobiomodulation). Utilise l'outil recherche_pubmed avec une requete EN ANGLAIS, puis resume en francais ce que disent les etudes : niveau de preuve, resultats, limites. Cite les liens PubMed. N'invente jamais d'etude ni de chiffre.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": true,
+          "tool_call_summary_format": "{result}",
+          "metadata": {}
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "redacteur",
+          "model_client": {
+            "provider": "autogen_ext.models.ollama.OllamaChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for Ollama hosted models.",
+            "label": "OllamaChatCompletionClient",
+            "config": {
+              "model": "llama3.1",
+              "host": "http://localhost:11434",
+              "follow_redirects": true
+            }
+          },
+          "workbench": {
+            "provider": "autogen_core.tools.StaticWorkbench",
+            "component_type": "workbench",
+            "version": 1,
+            "component_version": 1,
+            "description": "A workbench that provides a static set of tools that do not change after\n    each tool execution.",
+            "label": "StaticWorkbench",
+            "config": {
+              "tools": []
+            }
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Redige la fiche d'information patient.",
+          "system_message": "Tu rediges des fiches d'information pour les patients, en francais simple et bienveillant (niveau college). A partir du resume du chercheur, ecris une fiche avec ces parties : 1) De quoi s'agit-il ? 2) Comment se deroule une seance ? 3) Ce que disent les etudes (honnetement, sans promesse de guerison) 4) Conseils pour reussir son sevrage 5) Quand consulter un medecin. Termine toujours par : \"Ce document est un support d'information. Il ne remplace pas une consultation ni l'avis d'un professionnel de sante.\"",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}",
+          "metadata": {}
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "relecteur",
+          "model_client": {
+            "provider": "autogen_ext.models.ollama.OllamaChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for Ollama hosted models.",
+            "label": "OllamaChatCompletionClient",
+            "config": {
+              "model": "llama3.1",
+              "host": "http://localhost:11434",
+              "follow_redirects": true
+            }
+          },
+          "workbench": {
+            "provider": "autogen_core.tools.StaticWorkbench",
+            "component_type": "workbench",
+            "version": 1,
+            "component_version": 1,
+            "description": "A workbench that provides a static set of tools that do not change after\n    each tool execution.",
+            "label": "StaticWorkbench",
+            "config": {
+              "tools": []
+            }
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Verifie l'exactitude et la prudence de la fiche.",
+          "system_message": "Tu es relecteur en sante. Verifie la fiche du redacteur : aucune promesse de guerison, pas d'affirmation non soutenue par les etudes citees, langage clair, avertissement present, orientation vers un medecin si besoin. Si des corrections sont necessaires, liste-les precisement. Si la fiche est correcte, recopie la version finale puis ecris APPROUVE sur la derniere ligne.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}",
+          "metadata": {}
+        }
+      }
+    ],
+    "termination_condition": {
+      "provider": "autogen_agentchat.base.OrTerminationCondition",
+      "component_type": "termination",
+      "version": 1,
+      "component_version": 1,
+      "label": "OrTerminationCondition",
+      "config": {
+        "conditions": [
+          {
+            "provider": "autogen_agentchat.conditions.TextMentionTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "description": "Terminate the conversation if a specific text is mentioned.",
+            "label": "TextMentionTermination",
+            "config": {
+              "text": "APPROUVE"
+            }
+          },
+          {
+            "provider": "autogen_agentchat.conditions.MaxMessageTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "description": "Terminate the conversation after a maximum number of messages have been exchanged.",
+            "label": "MaxMessageTermination",
+            "config": {
+              "max_messages": 10,
+              "include_agent_event": false
+            }
+          }
+        ]
+      }
+    },
+    "emit_team_events": false
+  }
+}
