@@ -49,6 +49,19 @@ Sans interface, dans le terminal :
 .\.venv\Scripts\python.exe run_cli.py fiche_patient "Laser et sevrage alcoolique"
 ```
 
+## Exemple Claude (optionnel)
+
+`hello_claude.py` est un exemple minimal avec Claude (modele `claude-opus-5-5`).
+
+- Il faut une **cle API Anthropic**, a creer sur https://platform.claude.com.
+  L'abonnement Claude.ai (Pro/Max) ne donne **pas** acces a l'API : elle est facturee a part, a l'usage.
+- Les textes partent sur les serveurs d'Anthropic : n'y mettez jamais de donnees de patients identifiables.
+
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."   # votre cle API Anthropic
+.\.venv\Scripts\python.exe hello_claude.py
+```
+
 ## Exemple OpenAI (optionnel)
 
 `hello_openai.py` est un exemple minimal avec le modele `gpt-4o` d'OpenAI.
@@ -68,6 +81,7 @@ $env:OPENAI_API_KEY = "sk-..."   # votre cle OpenAI
 | `teams/*.json` | Equipes au format AutoGen Studio (importables aussi via la **Gallery**) |
 | `import_teams.py` | Ajoute les equipes dans AutoGen Studio deja demarre |
 | `run_cli.py` | Lance une equipe dans le terminal |
+| `hello_claude.py` | Exemple minimal avec Claude (cle API Anthropic requise) |
 | `hello_openai.py` | Exemple minimal avec OpenAI gpt-4o (cle API requise) |
 | `install.ps1` / `start.ps1` | Installation et demarrage sous Windows |
 
