@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#16a34a">
+<link rel="manifest" href="manifest.json">
+<title>CaloriePhoto</title>
+<style>
+  :root {
+    --vert: #16a34a;
+    --vert-fonce: #15803d;
+    --fond: #f6f8f6;
+    --carte: #ffffff;
+    --texte: #1a1f1a;
+    --texte-2: #5b665b;
+    --bordure: #e2e8e2;
+    --rouge: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fond: #10140f;
+      --carte: #1a211a;
+      --texte: #eef2ee;
+      --texte-2: #9aa89a;
+      --bordure: #2c352c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--fond);
+    color: var(--texte);
+    padding-bottom: 90px;
+  }
+  header {
+    background: var(--vert);
+    color: #fff;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+  header button {
+    background: rgba(255,255,255,.18);
+    border: none; color: #fff;
+    border-radius: 10px; padding: 8px 12px;
+    font-size: .95rem; cursor: pointer;
+  }
+  main { padding: 16px; max-width: 560px; margin: 0 auto; }
+  .carte {
+    background: var(--carte);
+    border: 1px solid var(--bordure);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .resume { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .resume .total { font-size: 2rem; font-weight: 800; color: var(--vert); }
+  .resume .objectif { color: var(--texte-2); font-size: .95rem; }
+  .barre {
+    height: 10px; background: var(--bordure);
+    border-radius: 5px; overflow: hidden; margin-top: 10px;
+  }
+  .barre > div { height: 100%; background: var(--vert); width: 0%; transition: width .4s; }
+  .barre > div.depasse { background: var(--rouge); }
+  .btn-photo {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%;
+    background: var(--vert); color: #fff;
+    border: none; border-radius: 16px;
+    padding: 18px; font-size: 1.1rem; font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-photo:active { background: var(--vert-fonce); }
+  .btn-photo svg { width: 26px; height: 26px; }
+  .apercu { text-align: center; }
+  .apercu img {
+    max-width: 100%; max-height: 260px;
+    border-radius: 12px; border: 1px solid var(--bordure);
+  }
+  .statut { text-align: center; color: var(--texte-2); padding: 10px 0; }
+  .spinner {
+    width: 28px; height: 28px; margin: 0 auto 8px;
+    border: 3px solid var(--bordure);
+    border-top-color: var(--vert);
+    border-radius: 50%;
+    animation: rot 1s linear infinite;
+  }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bordure); font-size: .95rem; }
+  th { color: var(--texte-2); font-weight: 600; font-size: .85rem; }
+  td.num, th.num { text-align: right; }
+  td input {
+    width: 70px; text-align: right;
+    background: transparent; color: var(--texte);
+    border: 1px solid var(--bordure); border-radius: 8px; padding: 4px 6px;
+    font-size: .95rem;
+  }
+  .ligne-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .btn {
+    flex: 1; border: none; border-radius: 12px;
+    padding: 12px; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  .btn.principal { background: var(--vert); color: #fff; }
+  .btn.secondaire { background: transparent; color: var(--texte-2); border: 1px solid var(--bordure); }
+  .macros { display: flex; gap: 8px; margin-top: 12px; }
+  .macro {
+    flex: 1; text-align: center;
+    background: var(--fond); border-radius: 10px; padding: 8px 4px;
+  }
+  .macro b { display: block; font-size: 1.05rem; }
+  .macro span { font-size: .75rem; color: var(--texte-2); }
+  .journal-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--bordure); gap: 10px;
+  }
+  .journal-item:last-child { border-bottom: none; }
+  .journal-item .infos { flex: 1; min-width: 0; }
+  .journal-item .nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .journal-item .heure { color: var(--texte-2); font-size: .82rem; }
+  .journal-item .kcal { font-weight: 700; color: var(--vert); white-space: nowrap; }
+  .journal-item button {
+    background: none; border: none; color: var(--texte-2);
+    font-size: 1.2rem; cursor: pointer; padding: 4px 8px;
+  }
+  .vide { color: var(--texte-2); text-align: center; padding: 16px 0; }
+  .erreur {
+    background: #fee2e2; color: #991b1b;
+    border-radius: 12px; padding: 12px; font-size: .92rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    .erreur { background: #3f1d1d; color: #fca5a5; }
+  }
+  h2 { font-size: 1rem; margin: 0 0 10px; }
+  /* Panneau reglages */
+  dialog {
+    border: none; border-radius: 16px;
+    background: var(--carte); color: var(--texte);
+    padding: 20px; width: min(92vw, 420px);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog label { display: block; font-size: .88rem; color: var(--texte-2); margin: 12px 0 4px; }
+  dialog input, dialog select {
+    width: 100%; padding: 10px;
+    border: 1px solid var(--bordure); border-radius: 10px;
+    background: var(--fond); color: var(--texte); font-size: 1rem;
+  }
+  dialog .ligne-actions { margin-top: 18px; }
+  .note { font-size: .8rem; color: var(--texte-2); margin-top: 10px; line-height: 1.4; }
+  #fichierPhoto { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥗 CaloriePhoto</h1>
+  <button id="btnReglages" aria-label="Réglages">⚙️ Réglages</button>
+</header>
+
+<main>
+  <!-- Résumé du jour -->
+  <section class="carte">
+    <div class="resume">
+      <div><span class="total" id="totalJour">0</span> <b>kcal</b></div>
+      <div class="objectif">Objectif : <span id="objectifAffiche">2000</span> kcal</div>
+    </div>
+    <div class="barre"><div id="barreProgression"></div></div>
+  </section>
+
+  <!-- Bouton photo -->
+  <button class="btn-photo" id="btnPhoto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    Photographier mon repas
+  </button>
+  <input type="file" id="fichierPhoto" accept="image/*" capture="environment">
+
+  <!-- Analyse en cours / résultat -->
+  <section class="carte" id="carteAnalyse" hidden>
+    <div class="apercu"><img id="imgApercu" alt="Photo du repas"></div>
+    <div class="statut" id="zoneStatut" hidden>
+      <div class="spinner"></div>
+      <div id="texteStatut">Analyse de la photo en cours…</div>
+    </div>
+    <div id="zoneErreur" class="erreur" hidden></div>
+    <div id="zoneResultat" hidden>
+      <table>
+        <thead>
+          <tr><th>Aliment</th><th>Portion</th><th class="num">kcal</th></tr>
+        </thead>
+        <tbody id="corpsResultat"></tbody>
+      </table>
+      <div class="macros">
+        <div class="macro"><b id="mProt">0 g</b><span>Protéines</span></div>
+        <div class="macro"><b id="mGluc">0 g</b><span>Glucides</span></div>
+        <div class="macro"><b id="mLip">0 g</b><span>Lipides</span></div>
+      </div>
+      <div class="ligne-actions">
+        <button class="btn secondaire" id="btnAnnuler">Annuler</button>
+        <button class="btn principal" id="btnAjouter">Ajouter (<span id="totalRepas">0</span> kcal)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Journal du jour -->
+  <section class="carte">
+    <h2>📒 Journal du jour</h2>
+    <div id="listeJournal"><div class="vide">Aucun repas enregistré aujourd'hui.</div></div>
+  </section>
+</main>
+
+<!-- Réglages -->
+<dialog id="dlgReglages">
+  <h2>Réglages</h2>
+  <label for="champMode">Moteur d'analyse</label>
+  <select id="champMode">
+    <option value="claude">Claude (en ligne, clé API)</option>
+    <option value="ollama">Ollama (local, gratuit)</option>
+  </select>
+
+  <div id="zoneClaude">
+    <label for="champCleApi">Clé API Anthropic</label>
+    <input id="champCleApi" type="password" placeholder="sk-ant-…" autocomplete="off">
+    <label for="champModeleClaude">Modèle Claude</label>
+    <select id="champModeleClaude">
+      <option value="claude-opus-5">Claude Opus 5 (recommandé)</option>
+      <option value="claude-sonnet-5">Claude Sonnet 5</option>
+      <option value="claude-haiku-4-5">Claude Haiku 4.5 (économique)</option>
+    </select>
+    <p class="note">
+      Créez une clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.
+      La clé reste stockée uniquement sur ce téléphone et n'est envoyée qu'à l'API Anthropic.
+      Ne l'utilisez que sur votre appareil personnel.
+    </p>
+  </div>
+
+  <div id="zoneOllama">
+    <label for="champHost">Adresse du serveur Ollama</label>
+    <input id="champHost" type="url" placeholder="http://192.168.1.10:11434" inputmode="url">
+    <label for="champModele">Modèle de vision</label>
+    <select id="champModele"></select>
+    <p class="note">
+      Le serveur Ollama doit tourner sur votre ordinateur avec un modèle de vision
+      (ex. <code>llava</code>) et accepter les requêtes du réseau local :
+      <code>OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=* ollama serve</code>.
+      Votre téléphone doit être sur le même Wi-Fi, et l'application servie en
+      <code>http://</code> (pas https) pour pouvoir joindre Ollama.
+    </p>
+  </div>
+
+  <label for="champObjectif">Objectif quotidien (kcal)</label>
+  <input id="champObjectif" type="number" min="500" max="10000" step="50">
+  <div class="ligne-actions">
+    <button class="btn secondaire" id="btnFermerReglages">Fermer</button>
+    <button class="btn principal" id="btnSauverReglages">Enregistrer</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+
+// ---------- Réglages ----------
+const MODELES_VISION_CONNUS = ["llava", "llava:13b", "llava-phi3", "bakllava", "moondream", "minicpm-v", "llama3.2-vision", "qwen2.5vl"];
+const reglages = {
+  // Sur une page https (ex. GitHub Pages), un serveur Ollama en http est
+  // inaccessible (contenu mixte) : Claude est alors le mode par défaut.
+  mode: localStorage.getItem("cp_mode") || (location.protocol === "https:" ? "claude" : "ollama"),
+  cleApi: localStorage.getItem("cp_cle_api") || "",
+  modeleClaude: localStorage.getItem("cp_modele_claude") || "claude-opus-5",
+  host: localStorage.getItem("cp_host") || "http://127.0.0.1:11434",
+  modele: localStorage.getItem("cp_modele") || "llava",
+  objectif: parseInt(localStorage.getItem("cp_objectif") || "2000", 10)
+};
+
+// ---------- Journal (localStorage, par jour) ----------
+function cleJour() {
+  const d = new Date();
+  return "cp_journal_" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function lireJournal() {
+  try { return JSON.parse(localStorage.getItem(cleJour())) || []; } catch { return []; }
+}
+function ecrireJournal(entrees) {
+  try { localStorage.setItem(cleJour(), JSON.stringify(entrees)); } catch {}
+}
+
+// ---------- Éléments ----------
+const $ = (id) => document.getElementById(id);
+let repasCourant = null; // { aliments: [...], photo: dataUrl }
+
+// ---------- Affichage résumé + journal ----------
+function rafraichir() {
+  const entrees = lireJournal();
+  const total = entrees.reduce((s, e) => s + e.calories, 0);
+  $("totalJour").textContent = Math.round(total);
+  $("objectifAffiche").textContent = reglages.objectif;
+  const pct = Math.min(100, (total / reglages.objectif) * 100);
+  const barre = $("barreProgression");
+  barre.style.width = pct + "%";
+  barre.classList.toggle("depasse", total > reglages.objectif);
+
+  const liste = $("listeJournal");
+  if (entrees.length === 0) {
+    liste.innerHTML = '<div class="vide">Aucun repas enregistré aujourd\'hui.</div>';
+    return;
+  }
+  liste.innerHTML = "";
+  entrees.forEach((e, i) => {
+    const div = document.createElement("div");
+    div.className = "journal-item";
+    const infos = document.createElement("div");
+    infos.className = "infos";
+    const nom = document.createElement("div");
+    nom.className = "nom";
+    nom.textContent = e.nom;
+    const heure = document.createElement("div");
+    heure.className = "heure";
+    heure.textContent = e.heure;
+    infos.append(nom, heure);
+    const kcal = document.createElement("div");
+    kcal.className = "kcal";
+    kcal.textContent = Math.round(e.calories) + " kcal";
+    const suppr = document.createElement("button");
+    suppr.textContent = "🗑";
+    suppr.setAttribute("aria-label", "Supprimer");
+    suppr.onclick = () => {
+      const l = lireJournal();
+      l.splice(i, 1);
+      ecrireJournal(l);
+      rafraichir();
+    };
+    div.append(infos, kcal, suppr);
+    liste.appendChild(div);
+  });
+}
+
+// ---------- Prise de photo ----------
+$("btnPhoto").onclick = () => $("fichierPhoto").click();
+$("fichierPhoto").onchange = async (ev) => {
+  const fichier = ev.target.files[0];
+  ev.target.value = "";
+  if (!fichier) return;
+  const dataUrl = await redimensionner(fichier, 896);
+  $("imgApercu").src = dataUrl;
+  $("carteAnalyse").hidden = false;
+  $("zoneResultat").hidden = true;
+  $("zoneErreur").hidden = true;
+  $("zoneStatut").hidden = false;
+  $("carteAnalyse").scrollIntoView({ behavior: "smooth" });
+  try {
+    const aliments = await analyserPhoto(dataUrl);
+    repasCourant = { aliments, photo: dataUrl };
+    afficherResultat(aliments);
+  } catch (err) {
+    const conseil = reglages.mode === "claude"
+      ? "Vérifiez dans ⚙️ Réglages que votre clé API Anthropic est renseignée et valide."
+      : "Vérifiez dans ⚙️ Réglages que l'adresse du serveur Ollama est correcte et que le modèle de vision est téléchargé (ollama pull " + reglages.modele + ").";
+    $("zoneErreur").textContent = "Échec de l'analyse : " + err.message + " — " + conseil;
+    $("zoneErreur").hidden = false;
+  } finally {
+    $("zoneStatut").hidden = true;
+  }
+};
+
+function redimensionner(fichier, maxCote) {
+  return new Promise((resoudre, rejeter) => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1, maxCote / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * ratio);
+      c.height = Math.round(img.height * ratio);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      resoudre(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => rejeter(new Error("Image illisible"));
+    img.src = URL.createObjectURL(fichier);
+  });
+}
+
+// ---------- Analyse via Ollama (modèle de vision) ----------
+const PROMPT_ANALYSE = `Tu es un nutritionniste expert. Analyse la photo de ce repas.
+Identifie chaque aliment visible, estime la portion et les valeurs nutritionnelles.
+Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans autre texte :
+{"aliments":[{"nom":"...","portion":"...","calories":0,"proteines_g":0,"glucides_g":0,"lipides_g":0}]}
+Les calories sont en kcal pour la portion visible. Si aucun aliment n'est visible, renvoie {"aliments":[]}.`;
+
+async function analyserPhoto(dataUrl) {
+  const base64 = dataUrl.split(",")[1];
+  const contenu = reglages.mode === "claude"
+    ? await analyserAvecClaude(base64)
+    : await analyserAvecOllama(base64);
+  return interpreterReponse(contenu);
+}
+
+async function analyserAvecClaude(base64) {
+  if (!reglages.cleApi) throw new Error("aucune clé API renseignée");
+  const ctrl = new AbortController();
+  const minuterie = setTimeout(() => ctrl.abort(), 120000);
+  let rep;
+  try {
+    rep = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": reglages.cleApi,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model: reglages.modeleClaude,
+        max_tokens: 2000,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+            { type: "text", text: PROMPT_ANALYSE }
+          ]
+        }]
+      })
+    });
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "délai dépassé (2 min)" : "API Anthropic injoignable");
+  } finally {
+    clearTimeout(minuterie);
+  }
+  if (!rep.ok) {
+    if (rep.status === 401) throw new Error("clé API invalide");
+    if (rep.status === 429) throw new Error("limite de requêtes atteinte, réessayez dans une minute");
+    const corps = await rep.text().catch(() => "");
+    throw new Error("réponse " + rep.status + (corps ? " — " + corps.slice(0, 200) : ""));
+  }
+  const donnees = await rep.json();
+  if (donnees.stop_reason === "refusal") throw new Error("l'analyse a été refusée par le modèle");
+  return (donnees.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+}
+
+async function analyserAvecOllama(base64) {
+  const ctrl = new AbortController();
+  const minuterie = setTimeout(() => ctrl.abort(), 180000);
+  let rep;
+  try {
+    rep = await fetch(reglages.host.replace(/\/$/, "") + "/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model: reglages.modele,
+        stream: false,
+        format: "json",
+        options: { temperature: 0.2 },
+        messages: [{ role: "user", content: PROMPT_ANALYSE, images: [base64] }]
+      })
+    });
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "délai dépassé (3 min)" : "serveur Ollama injoignable");
+  } finally {
+    clearTimeout(minuterie);
+  }
+  if (!rep.ok) {
+    const corps = await rep.text().catch(() => "");
+    throw new Error("réponse " + rep.status + (corps ? " — " + corps.slice(0, 200) : ""));
+  }
+  const donnees = await rep.json();
+  return donnees.message && donnees.message.content ? donnees.message.content : "";
+}
+
+function interpreterReponse(contenu) {
+  let json;
+  try {
+    json = JSON.parse(contenu);
+  } catch {
+    const m = contenu.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error("le modèle n'a pas renvoyé de JSON exploitable");
+    json = JSON.parse(m[0]);
+  }
+  const aliments = Array.isArray(json.aliments) ? json.aliments : [];
+  if (aliments.length === 0) throw new Error("aucun aliment détecté sur la photo");
+  return aliments.map((a) => ({
+    nom: String(a.nom || "Aliment"),
+    portion: String(a.portion || ""),
+    calories: Math.max(0, Number(a.calories) || 0),
+    proteines_g: Math.max(0, Number(a.proteines_g) || 0),
+    glucides_g: Math.max(0, Number(a.glucides_g) || 0),
+    lipides_g: Math.max(0, Number(a.lipides_g) || 0)
+  }));
+}
+
+// ---------- Affichage du résultat (calories modifiables) ----------
+function afficherResultat(aliments) {
+  const corps = $("corpsResultat");
+  corps.innerHTML = "";
+  aliments.forEach((a, i) => {
+    const tr = document.createElement("tr");
+    const tdNom = document.createElement("td");
+    tdNom.textContent = a.nom;
+    const tdPortion = document.createElement("td");
+    tdPortion.textContent = a.portion;
+    const tdKcal = document.createElement("td");
+    tdKcal.className = "num";
+    const champ = document.createElement("input");
+    champ.type = "number";
+    champ.min = "0";
+    champ.value = Math.round(a.calories);
+    champ.oninput = () => {
+      repasCourant.aliments[i].calories = Math.max(0, Number(champ.value) || 0);
+      majTotauxRepas();
+    };
+    tdKcal.appendChild(champ);
+    tr.append(tdNom, tdPortion, tdKcal);
+    corps.appendChild(tr);
+  });
+  majTotauxRepas();
+  $("zoneResultat").hidden = false;
+}
+
+function majTotauxRepas() {
+  const a = repasCourant.aliments;
+  $("totalRepas").textContent = Math.round(a.reduce((s, x) => s + x.calories, 0));
+  $("mProt").textContent = Math.round(a.reduce((s, x) => s + x.proteines_g, 0)) + " g";
+  $("mGluc").textContent = Math.round(a.reduce((s, x) => s + x.glucides_g, 0)) + " g";
+  $("mLip").textContent = Math.round(a.reduce((s, x) => s + x.lipides_g, 0)) + " g";
+}
+
+$("btnAjouter").onclick = () => {
+  if (!repasCourant) return;
+  const entrees = lireJournal();
+  const total = repasCourant.aliments.reduce((s, x) => s + x.calories, 0);
+  const noms = repasCourant.aliments.map((x) => x.nom).join(", ");
+  entrees.push({
+    nom: noms,
+    calories: total,
+    heure: new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+  });
+  ecrireJournal(entrees);
+  repasCourant = null;
+  $("carteAnalyse").hidden = true;
+  rafraichir();
+};
+
+$("btnAnnuler").onclick = () => {
+  repasCourant = null;
+  $("carteAnalyse").hidden = true;
+};
+
+// ---------- Réglages ----------
+function majZonesMode() {
+  const claude = $("champMode").value === "claude";
+  $("zoneClaude").hidden = !claude;
+  $("zoneOllama").hidden = claude;
+}
+$("champMode").onchange = majZonesMode;
+
+$("btnReglages").onclick = async () => {
+  $("champMode").value = reglages.mode;
+  $("champCleApi").value = reglages.cleApi;
+  $("champModeleClaude").value = reglages.modeleClaude;
+  $("champHost").value = reglages.host;
+  $("champObjectif").value = reglages.objectif;
+  remplirModeles([reglages.modele]);
+  majZonesMode();
+  $("dlgReglages").showModal();
+  try {
+    const rep = await fetch(reglages.host.replace(/\/$/, "") + "/api/tags", { signal: AbortSignal.timeout(5000) });
+    const donnees = await rep.json();
+    const noms = (donnees.models || []).map((m) => m.name);
+    if (noms.length) remplirModeles(noms);
+  } catch {
+    remplirModeles([...new Set([reglages.modele, ...MODELES_VISION_CONNUS])]);
+  }
+};
+function remplirModeles(noms) {
+  const sel = $("champModele");
+  sel.innerHTML = "";
+  [...new Set([reglages.modele, ...noms])].forEach((n) => {
+    const opt = document.createElement("option");
+    opt.value = n;
+    opt.textContent = n;
+    if (n === reglages.modele) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+$("btnSauverReglages").onclick = () => {
+  reglages.mode = $("champMode").value;
+  reglages.cleApi = $("champCleApi").value.trim();
+  reglages.modeleClaude = $("champModeleClaude").value;
+  reglages.host = $("champHost").value.trim() || reglages.host;
+  reglages.modele = $("champModele").value;
+  reglages.objectif = Math.max(500, parseInt($("champObjectif").value, 10) || 2000);
+  localStorage.setItem("cp_mode", reglages.mode);
+  localStorage.setItem("cp_cle_api", reglages.cleApi);
+  localStorage.setItem("cp_modele_claude", reglages.modeleClaude);
+  localStorage.setItem("cp_host", reglages.host);
+  localStorage.setItem("cp_modele", reglages.modele);
+  localStorage.setItem("cp_objectif", String(reglages.objectif));
+  $("dlgReglages").close();
+  rafraichir();
+};
+$("btnFermerReglages").onclick = () => $("dlgReglages").close();
+
+// ---------- PWA ----------
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+rafraichir();
+</script>
+</body>
+</html>
