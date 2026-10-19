@@ -64,8 +64,9 @@ Report "MCP Figma"
 # 6. MCP Playwright (Claude ouvre le site, fait des captures, clique, verifie)
 Write-Host "[6/6] MCP Playwright..." -ForegroundColor Yellow
 claude mcp remove playwright --scope user 2>&1 | Out-Null
-# Sous Windows natif, les serveurs MCP lances via npx ont besoin de "cmd /c"
-claude mcp add --scope user playwright -- cmd /c npx -y @playwright/mcp@latest
+# Sous Windows natif, les serveurs MCP lances via npx ont besoin de "cmd /c".
+# '--' est entre guillemets : sinon PowerShell le supprime et claude lit -y comme sa propre option.
+claude mcp add --scope user playwright '--' cmd /c npx -y @playwright/mcp@latest
 Report "MCP Playwright"
 
 Write-Host ""
