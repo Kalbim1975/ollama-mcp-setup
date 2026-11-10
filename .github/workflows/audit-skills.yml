@@ -1,0 +1,32 @@
+name: Audit sécurité des skills
+
+on:
+  pull_request:
+    paths:
+      - ".claude/skills/**"
+      - ".agents/skills/**"
+      - "skills-lock.json"
+      - "scripts/audit-skills.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".claude/skills/**"
+      - ".agents/skills/**"
+      - "skills-lock.json"
+  schedule:
+    - cron: "17 6 * * 1" # chaque lundi, pour revérifier avec les règles à jour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Audit des skills installés
+        run: node scripts/audit-skills.mjs
