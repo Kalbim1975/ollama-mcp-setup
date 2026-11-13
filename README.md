@@ -68,6 +68,26 @@ powershell -ExecutionPolicy Bypass -File install.ps1
                /mcp
                ```
 
+## Skills de design + MCP Figma / Playwright
+
+Pour que les sites generes par Claude Code ne ressemblent plus a des templates IA, `install-design.ps1` installe :
+
+| Element | Type | Role |
+|---------|------|------|
+| [Emil Kowalski](https://emilkowal.ski/skill) | Skills | Animations et details d'interface (`/emil-design-eng`, `/animate`, `/review-animations`...) |
+| [Impeccable](https://github.com/pbakaus/impeccable) | Skill | Langage de design, audit et polish d'interface (`/impeccable`) |
+| [Taste Skill](https://github.com/Leonxlnx/taste-skill) | Skill | Direction artistique anti-slop, verifiee dans un vrai navigateur (`/design-taste-frontend`) |
+| [Figma](https://developers.figma.com/docs/figma-mcp-server/) | MCP | Lire vos maquettes Figma et les implementer |
+| [Playwright](https://github.com/microsoft/playwright-mcp) | MCP | Ouvrir le site, faire des captures, cliquer et verifier le rendu |
+
+```powershell
+irm https://github.com/Kalbim1975/ollama-mcp-setup/raw/refs/heads/main/install-design.ps1 | iex
+```
+
+Prerequis : Node.js 22+, Claude Code, et Chrome/Edge (pour Taste Skill). Tout est installe au niveau utilisateur (disponible dans tous les projets).
+
+Apres l'installation, une seule fois : relancer `claude`, taper `/mcp` > **figma** > **Authenticate** > **Allow access**.
+
 ## Application AutoGen Studio
 
 Le dossier [`autogen-app/`](autogen-app/) contient une application d'agents IA (AutoGen Studio + Ollama, 100 % locale) : fiches d'information patient a partir de PubMed et comptes rendus de seance. Voir [autogen-app/README.md](autogen-app/README.md).
