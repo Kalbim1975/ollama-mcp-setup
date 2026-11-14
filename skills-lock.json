@@ -1,11 +1,18 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "skillPath": "skills/find-skills/SKILL.md",
-      "computedHash": "913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396",
+      "computedHash": "7bc223e2aafbdbf6e50ea243ba6ef67fe432bb069ab439fea0390795dac0bf7f",
+      "installMode": "copy"
+    },
+    "rea-video": {
+      "source": "JuneYaooo/rea-video",
+      "sourceType": "github",
+      "skillPath": "skills/rea-video/SKILL.md",
+      "computedHash": "9aa9b270419482bcd97a72533d913b9908ba5a30a363f8f21959dddd9be76cec",
       "installMode": "copy"
     }
   }

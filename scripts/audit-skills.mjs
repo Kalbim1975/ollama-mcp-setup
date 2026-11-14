@@ -113,8 +113,43 @@ async function collectFiles(baseDir, currentDir = baseDir, out = []) {
   return out;
 }
 
-// Même algorithme que le CLI `skills` (computeSkillFolderHash) pour vérifier skills-lock.json.
-function folderHash(files) {
+// Hash de skills-lock.json, même algorithme que le CLI `skills` :
+// - lock v1 (CLI < 1.8) : sha256(chemin + contenu) trié ;
+// - lock v2 (CLI >= 1.8) : sha256(chemin \0 taille \0 contenu) trié par octets, fins de ligne CRLF→LF,
+//   en ignorant metadata.json, __pycache__/ et __pypackages__/.
+function folderHash(files, version = 1) {
+  return version >= 2 ? folderHashV2(files) : folderHashV1(files);
+}
+
+const V2_EXCLUDE_FILES = new Set(["metadata.json"]);
+const V2_EXCLUDE_DIRS = new Set([".git", "__pycache__", "__pypackages__"]);
+
+function folderHashV2(files) {
+  const entries = files
+    .filter((f) => !f.symlink)
+    .filter((f) => {
+      const parts = f.rel.split("/");
+      return !parts.some((p, i) => (i < parts.length - 1 ? V2_EXCLUDE_DIRS.has(p) : V2_EXCLUDE_FILES.has(p)));
+    })
+    .map((f) => {
+      let content = f.content;
+      if (!content.includes(0) && content.includes("\r\n"))
+        content = Buffer.from(content.toString("latin1").replaceAll("\r\n", "\n"), "latin1");
+      return { path: Buffer.from(f.rel, "utf-8"), content };
+    })
+    .sort((a, b) => Buffer.compare(a.path, b.path));
+  const h = createHash("sha256");
+  for (const { path, content } of entries) {
+    h.update(path);
+    h.update("\0");
+    h.update(String(content.length));
+    h.update("\0");
+    h.update(content);
+  }
+  return h.digest("hex");
+}
+
+function folderHashV1(files) {
   const h = createHash("sha256");
   for (const f of [...files].filter((f) => !f.symlink).sort((a, b) => a.rel.localeCompare(b.rel))) {
     h.update(f.rel);
@@ -153,7 +188,9 @@ async function auditSkill(name, dir, lock) {
   if (lock) {
     const entry = lock.skills?.[name];
     if (!entry) add("MOYENNE", name, "-", 0, "not-locked", "Skill absent de skills-lock.json (origine non tracée)");
-    else if (entry.computedHash && entry.computedHash !== folderHash(files))
+    else if (!entry.computedHash)
+      add("MOYENNE", name, "-", 0, "no-hash", "Pas de hash dans skills-lock.json (intégrité non vérifiable)");
+    else if (entry.computedHash !== folderHash(files, lock.version))
       add("HAUTE", name, "-", 0, "hash-mismatch", "Contenu modifié depuis skills-lock.json (hash différent)");
   }
   return files.length;

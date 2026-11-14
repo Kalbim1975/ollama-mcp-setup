@@ -102,3 +102,29 @@ node scripts/audit-skills.mjs
 ```
 
 > Alerte connue : `find-skills` suggère `npx skills add ... -g -y` (installation globale sans confirmation). C'est signalé en 🟠 MOYENNE ; `CLAUDE.md` interdit à Claude d'appliquer cette consigne sans votre accord.
+
+### Skill `rea-video` : rétro-ingénierie de vidéos
+
+[`rea-video`](https://github.com/JuneYaooo/rea-video) (`.claude/skills/rea-video/`) décortique une vidéo plan par plan : filmé, IA, 3D, animation, rendu par code ou capture d'écran ; sous-titres, textes animés et stickers ; voix, musique et effets sonores ; puis propose un plan pour la refaire. Il produit un rapport `report.html`.
+
+Le skill pilote l'outil CLI Python `rea-video`, à installer à part (ffmpeg et Python 3.10 à 3.14 requis) :
+
+```bash
+# Linux / macOS (dans un environnement isolé, pas en global)
+python3 -m venv ~/.venvs/rea-video
+~/.venvs/rea-video/bin/pip install "rea-video[ocr] @ git+https://github.com/JuneYaooo/rea-video"
+~/.venvs/rea-video/bin/rea-video --help
+
+# Windows (PowerShell)
+py -3.12 -m venv $HOME\.venvs\rea-video
+& $HOME\.venvs\rea-video\Scripts\pip install "rea-video[ocr] @ git+https://github.com/JuneYaooo/rea-video"
+```
+
+Utilisation : donnez une vidéo à Claude Code (« comment cette vidéo a été faite ? »), ou en direct :
+`rea-video decompose video.mp4 -o out/video --lang en`, puis ouvrez `out/video/report.html`.
+
+> N'utilisez pas `scripts/install_skill.sh` du dépôt amont : il lie le skill en **global** (`~/.claude/skills`), ce que `CLAUDE.md` interdit.
+> Un modèle de vision (VLM) est facultatif ; ses clés vont dans un `.env` passé via `--env-file`, jamais dans le dépôt.
+> Audit : 0 alerte haute. 🟠 `pip uninstall -y opencv-python` (dédoublonnage de dépendances, sans risque) ; 🔵 lien vers chatcut.io (outil payant cité comme option).
+
+`skills-lock.json` est au format v2 (CLI `skills` ≥ 1.8) ; `scripts/audit-skills.mjs` vérifie les empreintes v1 et v2.
