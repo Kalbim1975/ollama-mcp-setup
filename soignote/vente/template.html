@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body style="margin:0">
+<title>Soignote · Fiches IFSI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout : page de vente une colonne, héros en deux colonnes (texte + aperçu téléphone), bandeaux pleine largeur */
+:root{
+  --bg:#f3f6f8; --surface:#ffffff; --ink:#14213a; --muted:#5b6880; --line:#dde3ea;
+  --accent:#1f6f8b; --accent-ink:#fff; --hl:#ffe27a; --band:#14213a; --band-ink:#eef3f8; --phone:#14213a;
+  --c1:#d4493b; --c2:#2f9bb0; --c3:#c2427e; --c4:#d9822b; --c5:#5f9e3f; --c6:#6670d4; --c7:#7a4fd0; --c8:#c99a1c;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif; --f-body:"Atkinson Hyperlegible",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1520;--surface:#18202e;--ink:#e8edf5;--muted:#9aa7bc;--line:#2a3446;--accent:#5cb8d6;--accent-ink:#0b1420;--hl:#7a6420;--band:#1c2738;--band-ink:#e8edf5;--phone:#000;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1520;--surface:#18202e;--ink:#e8edf5;--muted:#9aa7bc;--line:#2a3446;--accent:#5cb8d6;--accent-ink:#0b1420;--hl:#7a6420;--band:#1c2738;--band-ink:#e8edf5;--phone:#000;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;padding-block:16px}
+.logo{font-family:var(--f-display);font-weight:800;font-size:1.4rem}.logo span{color:var(--accent)}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:40px;align-items:center;padding-block:20px 56px}
+.eyebrow{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--c1)}
+.hero h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.05;font-weight:800;margin-top:10px}
+.hero h1 mark{background:linear-gradient(transparent 58%,var(--hl) 58%);color:inherit}
+.lead{color:var(--muted);font-size:1.12rem;margin:16px 0 0;max-width:52ch}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.pill{color:#fff;font-weight:700;font-size:.88rem;padding:5px 13px;border-radius:999px}
+.buy{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:26px}
+.price{font-family:var(--f-display);font-weight:800;font-size:2.2rem;font-variant-numeric:tabular-nums}
+.price small{font-family:var(--f-body);font-weight:400;font-size:.9rem;color:var(--muted);display:block;line-height:1.2}
+.cta{display:inline-block;background:var(--accent);color:var(--accent-ink);font-weight:700;text-decoration:none;padding:15px 26px;border-radius:12px;font-size:1.05rem;border:0;font-family:inherit}
+.cta:hover{filter:brightness(1.08)} .cta:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.cta.off{background:var(--line);color:var(--muted);cursor:not-allowed}
+.small{font-size:.85rem;color:var(--muted);margin-top:10px}
+.phone{justify-self:center;width:min(300px,100%);border:10px solid var(--phone);border-radius:38px;overflow:hidden;box-shadow:0 30px 60px -30px rgba(20,33,58,.55);transform:rotate(2deg);background:var(--phone)}
+.phone img{display:block;width:100%;height:auto;max-width:100%}
+section.blk{padding-block:56px}
+section.blk h2{font-size:clamp(1.6rem,3.6vw,2.3rem);font-weight:800}
+.sub{color:var(--muted);max-width:60ch;margin-top:8px}
+.anat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:28px}
+.anat div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.anat b{display:block;font-family:var(--f-display);font-size:1.05rem}
+.anat span{color:var(--muted);font-size:.92rem}
+.anat .role{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.anat .alert{border-color:var(--c1);background:color-mix(in srgb,var(--c1) 9%,var(--surface))}
+.band{background:var(--band);color:var(--band-ink)}
+.band .sub{color:color-mix(in srgb,var(--band-ink) 70%,transparent)}
+.specs{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:26px}
+.spec{display:flex;justify-content:space-between;align-items:center;border:1px solid color-mix(in srgb,var(--band-ink) 18%,transparent);border-radius:12px;padding:10px 14px;font-variant-numeric:tabular-nums}
+.spec b{font-family:var(--f-display);font-size:1.2rem}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:26px;counter-reset:s}
+.steps div{counter-increment:s}
+.steps div::before{content:counter(s);display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;margin-bottom:10px}
+.steps b{display:block;font-family:var(--f-display);font-size:1.1rem}
+.steps span{color:var(--muted)}
+details{border-bottom:1px solid var(--line);padding-block:14px;max-width:760px}
+summary{cursor:pointer;font-weight:700;font-size:1.05rem}
+details p{color:var(--muted);margin:8px 0 0}
+.final{text-align:center}
+.final .buy{justify-content:center}
+footer{border-top:1px solid var(--line);padding-block:24px;color:var(--muted);font-size:.85rem}
+@media (max-width:760px){.hero .wrap{grid-template-columns:minmax(0,1fr)}.phone{transform:none;width:min(260px,100%)}.anat{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.phone{transform:none}}
+</style>
+
+<header class="top"><div class="wrap"><div class="logo">Soi<span>gnote</span></div><a class="cta js-buy" href="#offre" style="padding:9px 16px;font-size:.92rem">Obtenir les fiches</a></div></header>
+
+<section class="hero"><div class="wrap">
+  <div>
+    <div class="eyebrow">Spécial IFSI · étudiants en soins infirmiers</div>
+    <h1>Tes pathos sur <mark>une seule page</mark>, rôle infirmier compris.</h1>
+    <p class="lead">__N__ fiches visuelles pour comprendre le mécanisme, repérer les signes, connaître les examens et le traitement, et surtout savoir quoi faire en stage. Chaque fiche se termine par une question de partiel corrigée.</p>
+    <div class="pills">
+      <span class="pill" style="background:var(--c1)">Cardio</span><span class="pill" style="background:var(--c2)">Pneumo</span><span class="pill" style="background:var(--c3)">Neuro</span><span class="pill" style="background:var(--c4)">Endocrino</span><span class="pill" style="background:var(--c5)">Digestif</span><span class="pill" style="background:var(--c6)">Psy</span><span class="pill" style="background:var(--c7)">Pharmaco</span><span class="pill" style="background:var(--c8)">Pédiatrie</span><span class="pill" style="background:var(--muted)">+ 8 spécialités</span>
+    </div>
+    <div class="buy" id="offre"><div class="price">__PRIX__<small>paiement unique<br>PDF + appli web</small></div><a class="cta js-buy" href="#offre">Acheter les fiches</a></div>
+    <p class="small js-note">Paiement sécurisé par Stripe. Accès immédiat après paiement.</p>
+  </div>
+  <div class="phone"><img src="data:image/jpeg;base64,__IMG__" alt="Aperçu de la fiche AVC sur téléphone : localisation sur le corps, phrase de synthèse, mécanisme pas à pas" width="430" height="900"></div>
+</div></section>
+
+<section class="blk" style="background:var(--surface)"><div class="wrap">
+  <h2>Chaque fiche suit le même plan</h2>
+  <p class="sub">Tu sais toujours où chercher. Le même ordre que celui qu'on attend de toi en partiel et en stage.</p>
+  <div class="anat">
+    <div><b>Où ça se passe</b><span>Le corps avec l'organe touché en couleur.</span></div>
+    <div><b>En une phrase</b><span>La patho expliquée simplement, sans jargon.</span></div>
+    <div><b>Pas à pas</b><span>Le mécanisme en 4 étapes, de la cause aux signes.</span></div>
+    <div><b>Signes et examens</b><span>Ce que tu vois, ce qu'on demande.</span></div>
+    <div><b>Traitement</b><span>Les grandes lignes et les molécules à connaître.</span></div>
+    <div class="role"><b>Rôle infirmier</b><span>Surveillance, gestes, éducation du patient.</span></div>
+    <div class="alert"><b>Signes d'alerte</b><span>Quand appeler le médecin, tout de suite.</span></div>
+    <div><b>Question de partiel</b><span>Une question type, avec sa correction.</span></div>
+  </div>
+</div></section>
+
+<section class="blk band"><div class="wrap">
+  <h2>__N__ fiches, 16 spécialités</h2>
+  <p class="sub">Les pathologies les plus tombées en UE et les plus vues en stage. De nouvelles fiches sont ajoutées régulièrement, sans surcoût.</p>
+  <div class="specs">__SPECS__</div>
+</div></section>
+
+<section class="blk"><div class="wrap">
+  <h2>Comment ça marche</h2>
+  <div class="steps">
+    <div><b>Tu paies une fois</b><span>Par carte, via Stripe. Pas d'abonnement.</span></div>
+    <div><b>Tu reçois ton accès</b><span>Le PDF à imprimer ou à garder sur ta tablette, et le lien de l'appli.</span></div>
+    <div><b>Tu révises partout</b><span>Recherche, favoris, fiches révisées et quiz de partiel sur ton téléphone.</span></div>
+  </div>
+</div></section>
+
+<section class="blk" style="background:var(--surface)"><div class="wrap">
+  <h2>Questions fréquentes</h2>
+  <details><summary>Est-ce que ça remplace mes cours ?</summary><p>Non. Les fiches sont un résumé pour réviser et pour retrouver l'essentiel en stage. Elles ne remplacent ni tes cours, ni les protocoles de ton service, ni la prescription médicale.</p></details>
+  <details><summary>Sur quoi je peux lire les fiches ?</summary><p>Le PDF s'ouvre sur ordinateur, tablette et téléphone, et s'imprime en A4 (une fiche par page). L'appli web fonctionne dans le navigateur, sans installation.</p></details>
+  <details><summary>Les nouvelles fiches sont-elles incluses ?</summary><p>Oui, les mises à jour et les fiches ajoutées sont incluses dans ton achat.</p></details>
+  <details><summary>Puis-je me faire rembourser ?</summary><p>Pour un contenu numérique livré immédiatement, tu renonces à ton droit de rétractation en validant l'achat (article L221-28 du Code de la consommation). En cas de problème d'accès, écris-nous et on règle ça.</p></details>
+</div></section>
+
+<section class="blk final"><div class="wrap">
+  <h2>Prêt·e pour tes partiels ?</h2>
+  <div class="buy"><div class="price">__PRIX__</div><a class="cta js-buy" href="#offre">Acheter les fiches</a></div>
+</div></section>
+
+<footer><div class="wrap">Soignote · contenu pédagogique pour étudiants en soins infirmiers · Mentions légales et CGV : à compléter avant la mise en vente.</div></footer>
+
+<script>
+/* Colle ici ton lien de paiement Stripe (Payment Link), par ex. https://buy.stripe.com/xxxx */
+const STRIPE_URL="";
+document.querySelectorAll(".js-buy").forEach(a=>{
+  if(STRIPE_URL){a.href=STRIPE_URL;a.target="_blank";a.rel="noopener"}
+  else if(!a.closest(".top")){a.classList.add("off");a.setAttribute("aria-disabled","true");a.textContent="Paiement bientôt disponible";a.addEventListener("click",e=>e.preventDefault())}
+});
+if(!STRIPE_URL)document.querySelectorAll(".js-note").forEach(n=>n.textContent="Le lien de paiement Stripe n'est pas encore configuré.");
+</script>
+
+</body>
+</html>
