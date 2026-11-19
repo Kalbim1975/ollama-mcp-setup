@@ -19,7 +19,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 <title>Soignote</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 /* Layout : appli mobile-first, barre haute collante, grille de fiches, fiche = une page en blocs */
 :root{
@@ -153,6 +153,7 @@ body.printing .fiche{padding:0;break-after:page}
 body.printing .blk{padding:8px 11px}
 body.printing .blocks{gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
 body.printing .note{display:none}
+body.printing a[href="#doses"]{display:none}
 body.printing .flow span.step{font-size:10.5px;padding:3px 8px}
 body.printing .map svg{max-width:70px}
 @media (max-width:640px){.fgrid{grid-template-columns:minmax(0,1fr) 92px;gap:10px}.blocks{grid-template-columns:minmax(0,1fr)} nav.tabs{margin-left:0;width:100%}}
@@ -165,6 +166,7 @@ body.printing .map svg{max-width:70px}
     <button class="tab" data-view="list" aria-pressed="true">Fiches</button>
     <button class="tab" data-view="fav" aria-pressed="false">Favoris</button>
     <button class="tab" data-view="quiz" aria-pressed="false">Quiz</button>
+    <button class="tab" data-view="doses" aria-pressed="false">Doses</button>
   </nav>
 </div></header>
 <main id="app" class="wrap"></main>
@@ -1803,6 +1805,7 @@ function ficheHTML(f,fav,done){
       <div class="blk wide qbox"><h3>Question de partiel</h3><p style="margin:0">${esc(f.q.q)}</p>
         <button class="btn primary reveal" id="rev">Voir la réponse</button><div class="answer" id="ans" hidden>${esc(f.q.a)}</div></div>
     </div>
+    ${f.id==="epi"?`<p style="margin-top:14px"><a class="btn primary" href="#doses" style="text-decoration:none;display:inline-block">Calculer les doses de l'état de mal</a></p>`:""}
     <p class="note">Support de révision synthétique : il ne remplace ni tes cours, ni les protocoles de ton service, ni la prescription médicale.</p>
   </article>`;
 }
@@ -1850,11 +1853,267 @@ function renderQuiz(){
   else document.getElementById("show").onclick=()=>{quiz.shown=true;renderQuiz()};
 }
 
-function go(v){state.view=v;setTabs(v);if(v==="quiz")renderQuiz();else renderList(v==="fav");window.scrollTo(0,0)}
+/* ===== Calcul de doses : état de mal épileptique (intégré, isolé dans un Shadow DOM) ===== */
+const DZ_CSS="[hidden]{display:none!important}\n.app>*{min-width:0}\n.weightbar{grid-template-columns:auto minmax(0,1fr)!important}\n.winput{min-width:0}\n.winput input{width:100%}\n/* Layout: colonne unique mobile d'abord. Barre de poids collante, onglets défilants, une fiche de calcul dessous. */\n.dzroot{\n  --bg:#F2F5F7; --surface:#FFFFFF; --surface-2:#E8EDF0; --fg:#13232B; --muted:#51636D; --line:#CBD5DA;\n  --accent:#0A5A70; --accent-fg:#FFFFFF; --accent-soft:#D3EAF0;\n  --info-bg:#E4EEF8; --info-fg:#1A4772; --info-line:#9DBFE0;\n  --ok-bg:#E3F2E6; --ok-fg:#1D5A29; --ok-line:#93C69B;\n  --bad-bg:#FBE8E8; --bad-fg:#8C1B1B; --bad-line:#E3A0A0;\n  --warn-bg:#FFF2D9; --warn-fg:#794800; --warn-line:#E6C27A;\n  --sw-keppra:#D9DFE4; --sw-depakine:#E6BFB0; --sw-gardenal:#EFC4A8; --sw-thio:#F2DE98;\n  --font-body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;\n  --font-num:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;\n}\n@media (prefers-color-scheme: dark){\n  .dzroot:not([data-theme=\"light\"]){\n    --bg:#0F181D; --surface:#17232A; --surface-2:#1F2F37; --fg:#E6EEF1; --muted:#9DB0B9; --line:#2D414A;\n    --accent:#5CC0DB; --accent-fg:#06222B; --accent-soft:#123745;\n    --info-bg:#14283C; --info-fg:#A8CBF0; --info-line:#2F5E8C;\n    --ok-bg:#14291A; --ok-fg:#A6DDB0; --ok-line:#2E6A3B;\n    --bad-bg:#2E1517; --bad-fg:#F2B1B1; --bad-line:#7D2E32;\n    --warn-bg:#2E2410; --warn-fg:#EFCB84; --warn-line:#7A5A1E;\n    --sw-keppra:#46525A; --sw-depakine:#7A5446; --sw-gardenal:#80583F; --sw-thio:#7F6F2F;\n    color-scheme:dark;\n  }\n}\n.dzroot[data-theme=\"dark\"]{\n  --bg:#0F181D; --surface:#17232A; --surface-2:#1F2F37; --fg:#E6EEF1; --muted:#9DB0B9; --line:#2D414A;\n  --accent:#5CC0DB; --accent-fg:#06222B; --accent-soft:#123745;\n  --info-bg:#14283C; --info-fg:#A8CBF0; --info-line:#2F5E8C;\n  --ok-bg:#14291A; --ok-fg:#A6DDB0; --ok-line:#2E6A3B;\n  --bad-bg:#2E1517; --bad-fg:#F2B1B1; --bad-line:#7D2E32;\n  --warn-bg:#2E2410; --warn-fg:#EFCB84; --warn-line:#7A5A1E;\n  --sw-keppra:#46525A; --sw-depakine:#7A5446; --sw-gardenal:#80583F; --sw-thio:#7F6F2F;\n  color-scheme:dark;\n}\n*{box-sizing:border-box}\n.dzroot{background:var(--bg);color:var(--fg);font:16px/1.5 var(--font-body);padding-block:16px 40px;-webkit-text-size-adjust:100%}\n.app{max-width:720px;margin-inline:auto;display:flex;flex-direction:column;gap:14px}\nh1,h2,h3{margin:0;text-wrap:balance;line-height:1.2}\nh1{font-size:1.5rem;font-weight:700}\n.sub{margin:4px 0 0;color:var(--muted);font-size:.9375rem}\n.label-caps{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted)}\n\n/* Poids */\n.weightbar{position:sticky;top:var(--hdr,0px);z-index:5;background:var(--bg);padding-block:8px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;border-bottom:1px solid var(--line)}\n.weightbar label{font-weight:700;font-size:1rem}\n.winput{display:flex;align-items:baseline;gap:8px;background:var(--surface);border:2px solid var(--accent);border-radius:10px;padding:2px 14px}\n.winput input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:600 2rem/1.3 var(--font-num);padding:4px 0;outline:none;font-variant-numeric:tabular-nums}\n.winput:focus-within{box-shadow:0 0 0 3px var(--accent-soft)}\n.winput span{font-weight:700;color:var(--muted)}\n.hint{grid-column:1/-1;margin:0;font-size:.8125rem;color:var(--warn-fg);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:4px 10px}\n\n/* Onglets */\n.tabs{display:flex;gap:8px;overflow-x:auto;padding-block:2px 6px;scroll-snap-type:x proximity;scrollbar-width:thin}\n.tab{flex:0 0 auto;scroll-snap-align:start;display:flex;align-items:center;gap:10px;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px 8px 10px;min-height:56px;cursor:pointer}\n.tab .dot{width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.25);flex:0 0 auto}\n.tab b{display:block;font-size:.9375rem;line-height:1.2}\n.tab small{display:block;color:var(--muted);font-size:.75rem;font-family:var(--font-num);font-weight:500}\n.tab[aria-pressed=\"true\"]{background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}\n.tab:focus-visible,summary:focus-visible,input[type=range]:focus-visible,.check input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n\n/* Fiche */\n.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:16px}\n.head{display:flex;flex-direction:column;gap:8px}\n.head .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}\n.head .chip{width:18px;height:18px;border-radius:5px;border:1px solid rgba(0,0,0,.25)}\n.head h2{font-size:1.375rem}\n.brand{color:var(--muted);font-size:1rem}\n.pills{display:flex;gap:6px;flex-wrap:wrap}\n.pill{font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--surface-2);color:var(--fg)}\n.pill.off{background:var(--bad-bg);color:var(--bad-fg);border:1px solid var(--bad-line)}\n.pres{margin:0;color:var(--muted);font-size:.9375rem}\n.ind{margin:0;background:var(--info-bg);color:var(--info-fg);border:1px solid var(--info-line);border-radius:8px;padding:8px 12px;font-size:.9375rem}\n.ind b{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;margin-right:6px}\n\n#controls{display:flex;flex-direction:column;gap:12px;background:var(--surface-2);border-radius:10px;padding:12px}\n.ctl label{display:flex;justify-content:space-between;gap:10px;font-weight:700}\n.ctl output{font-family:var(--font-num);font-weight:600}\n.ctl input[type=range]{width:100%;accent-color:var(--accent);margin-block:8px 0}\n.rangeends{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);font-family:var(--font-num)}\n.check{display:flex;gap:10px;align-items:flex-start;font-size:.9375rem;cursor:pointer}\n.check input{width:22px;height:22px;flex:0 0 auto;accent-color:var(--accent);margin:1px 0 0}\n\n.hero{display:flex;flex-direction:column;gap:2px;padding-block:4px}\n.hero .big{font-family:var(--font-num);font-weight:600;font-size:clamp(2.5rem,13vw,4rem);line-height:1.05;font-variant-numeric:tabular-nums;color:var(--accent)}\n.hero .big small{font-size:.4em;color:var(--muted);margin-left:.25em;font-weight:500}\n.hero .formula{color:var(--muted);font-size:.9375rem}\n\n.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}\n.metrics>div{background:var(--surface-2);border-radius:10px;padding:10px 12px;min-width:0}\n.metrics>div:last-child:nth-child(odd){grid-column:1/-1}\n.metrics dt{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}\n.metrics dd{margin:2px 0 0;font-family:var(--font-num);font-weight:600;font-size:1.25rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}\n.metrics dd small{font-family:var(--font-body);font-weight:400;font-size:.75rem;color:var(--muted);display:block;line-height:1.3}\n\n.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:8px}\n.steps li{counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}\n.steps li::before{content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font:700 .875rem/28px var(--font-body);text-align:center}\n.steps li span{padding-top:2px;min-width:0}\n.steps em{display:block;font-style:normal;color:var(--muted);font-size:.8125rem}\n.steps b{font-family:var(--font-num);font-weight:600}\n\n.alert{border:1px solid;border-radius:8px;padding:8px 12px;font-size:.9375rem}\n.alert.warn{background:var(--warn-bg);color:var(--warn-fg);border-color:var(--warn-line)}\n.alert.bad{background:var(--bad-bg);color:var(--bad-fg);border-color:var(--bad-line)}\n.alert.ok{background:var(--ok-bg);color:var(--ok-fg);border-color:var(--ok-line)}\n.alert.info{background:var(--info-bg);color:var(--info-fg);border-color:var(--info-line)}\n.alert.plain{background:var(--surface-2);color:var(--muted);border-color:var(--line)}\n.alerts{display:flex;flex-direction:column;gap:8px}\n.empty{padding:24px 8px;text-align:center;color:var(--muted)}\n\ndetails.sec{border:1px solid;border-radius:10px;overflow:hidden}\ndetails.sec summary{cursor:pointer;padding:10px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}\ndetails.sec summary::-webkit-details-marker{display:none}\ndetails.sec summary::after{content:\"+\";font:700 1.25rem/1 var(--font-num)}\ndetails.sec[open] summary::after{content:\"−\"}\ndetails.sec .body{padding:0 14px 12px}\ndetails.sec ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:4px}\ndetails.sec.ci{background:var(--bad-bg);color:var(--bad-fg);border-color:var(--bad-line)}\ndetails.sec.sv{background:var(--ok-bg);color:var(--ok-fg);border-color:var(--ok-line)}\ndetails.sec.ei{background:var(--warn-bg);color:var(--warn-fg);border-color:var(--warn-line)}\ndetails.sec.ipc{background:var(--surface-2);color:var(--fg);border-color:var(--line)}\n.tag{font-family:var(--font-num);font-weight:600;font-size:.8125rem;margin-right:6px}\n\n.ficheT h3{font-size:.9375rem;margin-bottom:8px}\n.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}\ntable{border-collapse:collapse;width:100%;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:.875rem}\nth,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}\ntr:last-child th,tr:last-child td{border-bottom:0}\nth:first-child{text-align:left;font-family:var(--font-body);position:sticky;left:0;background:var(--surface-2)}\nthead th{background:var(--surface-2)}\n.hit{background:var(--accent-soft);font-weight:600;color:var(--fg)}\nthead .hit{background:var(--accent);color:var(--accent-fg)}\n.legal{margin:0;font-size:.8125rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}\n@media (prefers-reduced-motion:no-preference){.tab{transition:background .15s,border-color .15s}}\n@media (min-width:600px){.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.metrics>div:last-child:nth-child(odd){grid-column:auto}.metrics>div:last-child:nth-child(3n+1):not(:first-child){grid-column:auto}}";
+const DZ_HTML="<main class=\"app\">\n  <header>\n    <h1>Calcul de doses, état de mal épileptique<\/h1>\n    <p class=\"sub\">Adulte. Valeurs issues de vos fiches plastifiées.<\/p>\n  <\/header>\n\n  <div class=\"weightbar\">\n    <label for=\"w\">Poids<\/label>\n    <div class=\"winput\">\n      <input id=\"w\" type=\"text\" inputmode=\"decimal\" autocomplete=\"off\" value=\"70\" aria-describedby=\"whint\" aria-label=\"Poids du patient en kilogrammes\">\n      <span>kg<\/span>\n    <\/div>\n    <p id=\"whint\" class=\"hint\">Poids d'exemple. Remplacez-le par le poids du patient.<\/p>\n  <\/div>\n\n  <nav class=\"tabs\" id=\"tabs\" aria-label=\"Médicament\"><\/nav>\n\n  <section class=\"panel\" aria-live=\"polite\">\n    <div class=\"head\" id=\"head\"><\/div>\n    <div id=\"controls\" hidden><\/div>\n    <div id=\"out\"><\/div>\n    <div id=\"info\" style=\"display:flex;flex-direction:column;gap:8px\"><\/div>\n    <p class=\"legal\">Aide au calcul à partir des fiches du service. Elle ne remplace ni la prescription médicale ni le protocole en vigueur. Faire un double contrôle de la dose, de la dilution et de la vitesse avant d'administrer.<\/p>\n  <\/section>\n<\/main>";
+function DZ_INIT(sh){
+// BEGIN-CALC
+const r2 = n => Math.round(n * 100) / 100;
+const ceilQ = x => Math.ceil(x - 1e-9);
+
+// Tableaux des fiches (valeurs relevées sur les photos), servent à vérifier le calcul.
+const T = {
+  keppra:   { min:50, max:null, w:[50,60,70,80,90,100], rows:[
+    {k:'dose', l:'Dose (mg)',    v:[3000,3600,4200,4500,4500,4500]},
+    {k:'vol',  l:'Volume (ml)',  v:[30,36,42,45,45,45]} ]},
+  depakine: { min:40, max:null, w:[40,50,60,70,80,90,100,110], rows:[
+    {k:'dose', l:'Dose (mg)',    v:[1600,2000,2400,2800,3000,3000,3000,3000]},
+    {k:'vol',  l:'Volume (ml)',  v:[16,20,24,28,30,30,30,30]} ]},
+  gardenal: { min:50, max:null, openLast:true, w:[50,55,60,65,70,75,80], wl:['50','55','60','65','70','75','>80'], rows:[
+    {k:'dose', l:'Dose (mg)',       v:[750,825,900,975,1050,1125,1200]},
+    {k:'vol',  l:'Volume (ml)',     v:[37.5,41.2,45,48.7,52.5,56.2,60]},
+    {k:'fl',   l:'Nb de flacons',   v:[4,5,5,5,6,6,6]} ]},
+  induction:{ min:50, max:100, w:[50,60,70,80,90,100], rows:[
+    {k:'b15', l:'Bolus 1,5 mg/kg (ml)', v:[3,3.6,4.2,4.8,5.4,6], scale:true},
+    {k:'b25', l:'Bolus 2,5 mg/kg (ml)', v:[5,6,7,8,9,10], scale:true} ]},
+  sedation: { min:50, max:100, w:[50,60,70,80,90,100], rows:[
+    {k:'r2', l:'2 mg/kg/h (ml/h)', v:[10,12,14,16,18,20]},
+    {k:'r3', l:'3 mg/kg/h (ml/h)', v:[15,18,21,24,27,30]},
+    {k:'r4', l:'4 mg/kg/h (ml/h)', v:[20,24,28,32,36,40]},
+    {k:'r5', l:'5 mg/kg/h (ml/h)', v:[25,30,35,40,45,50]} ]}
+};
+
+function compute(id, w, o){
+  if(id==='keppra'){
+    const raw=60*w, dose=Math.min(raw,4500), vol=dose/100;
+    return {raw,dose,capped:raw>4500,vol,flacons:ceilQ(dose/500),cols:{dose,vol}};
+  }
+  if(id==='depakine'){
+    const raw=40*w, dose=Math.min(raw,3000), vol=dose/100;
+    return {raw,dose,capped:raw>3000,vol,flacons:ceilQ(dose/400),nacl:50-vol,cols:{dose,vol}};
+  }
+  if(id==='gardenal'){
+    const raw=15*w, dose=Math.min(raw,1200), vol=dose/20, fl=ceilQ(dose/200);
+    return {raw,dose,capped:raw>1200,vol,flacons:fl,eppi:fl*10,nacl:60-vol,mgmin:dose/20,cols:{dose,vol,fl}};
+  }
+  if(id==='induction'){
+    const f=o.half?0.5:1, dose=o.mgkg*w*f, lo=1.5*w*f, hi=2.5*w*f;
+    return {f,dose,ml:dose/25,lo,hi,loMl:lo/25,hiMl:hi/25,cols:{b15:lo/25,b25:hi/25}};
+  }
+  const rate=o.mgkgh*w/10, mgh=o.mgkgh*w;
+  return {rate,mgh,hours:50/rate,cols:{r2:2*w/10,r3:3*w/10,r4:4*w/10,r5:5*w/10}};
+}
+function matchIdx(t,w){
+  const i=t.w.findIndex(x=>Math.abs(x-w)<1e-9);
+  if(i>=0) return i;
+  if(t.openLast && w>=t.w[t.w.length-1]) return t.w.length-1;
+  return -1;
+}
+function outOfRange(t,w){ return w<t.min || (t.max!==null && w>t.max); }
+function check(id,w,res,f){
+  const t=T[id], idx=matchIdx(t,w);
+  if(idx<0) return {status:'none'};
+  const bad=[];
+  t.rows.forEach(r=>{
+    const exp=r.v[idx]*(r.scale?f:1), got=res.cols[r.k];
+    if(Math.abs(exp-got)>0.061) bad.push({row:r.l,exp,got});
+  });
+  return {status:bad.length?'diff':'ok',idx,bad};
+}
+// END-CALC
+
+const nf = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2});
+const f = n => nf.format(r2(n));
+const hm = h => { const m=Math.round(h*60); return `${Math.floor(m/60)} h ${String(m%60).padStart(2,'0')} min`; };
+
+const STATIC = {
+  keppra:{
+    name:'Lévétiracétam', brand:'Keppra®', cls:'Antiépileptique', sw:'keppra', tab:'60 mg/kg', off:true,
+    pres:'Flacon de 500 mg dans 5 ml, concentration 100 mg/ml',
+    ind:'État de mal épileptique. Antiépileptique de seconde ligne.',
+    surv:['État neurologique, convulsion, état respiratoire, SpO₂, FR'],
+    ci:['Hypersensibilité au produit'],
+    ipc:null,
+    ei:[{t:'TF',x:'rhinopharyngite, somnolence, céphalées'},{t:'F',x:'anorexie, dépression, anxiété, trouble de l\'équilibre, convulsion, vertiges, douleur abdominale, diarrhées, éruption cutanée, faiblesses, étourdissement, somnolence'}],
+    prudence:'Prudence et surveillance chez les patients avec allongement de l\'intervalle QT, en cas de médicaments connus pour prolonger le QT, de pathologies cardiaques à risque ou de perturbations électrolytiques.'
+  },
+  depakine:{
+    name:'Valproate de sodium', brand:'Dépakine®', cls:'Antiépileptique', sw:'depakine', tab:'40 mg/kg', off:true,
+    pres:'Flacon poudre 400 mg/4 ml',
+    ind:'État de mal épileptique (antiépileptique de seconde ligne).',
+    surv:['Scope, SpO₂, FR, conscience, état neurologique, convulsions','Matériel de réanimation à proximité'],
+    ci:['Femmes enceintes','Femmes en âge de procréer','ATCD d\'hypersensibilité au produit','Hépatite aiguë et chronique, ATCD d\'hépatite sévère notamment médicamenteuse','Pathologie mitochondriale, porphyrie hépatique'],
+    ipc:null,
+    ei:[{t:'TF',x:'tremblements, nausées'},{t:'F',x:'encéphalopathie, hyperammoniémie, troubles extrapyramidaux, céphalées, nystagmus, troubles de la mémoire, agitation, troubles de l\'attention, hallucinations'},{t:'F',x:'diarrhées, douleur abdo, troubles gingivaux, stomatite, hépatopathies, incontinence urinaire, prise de poids'},{t:'F',x:'hyponatrémie, anémie, thrombopénie'}]
+  },
+  gardenal:{
+    name:'Phénobarbital', brand:'Gardénal®', cls:'Antiépileptique majeur', sw:'gardenal', tab:'15 mg/kg',
+    pres:'Flacon poudre de 200 mg + 4 ml de solvant, à reconstituer',
+    ind:'État de mal épileptique. Antiépileptique de seconde ligne.',
+    surv:['Scope, PA, FC, FR, SpO₂, conscience','Matériel de réanimation à proximité','Évaluation de l\'efficacité 20 minutes après le début de la perfusion'],
+    ci:['Insuffisance respiratoire sévère','Porphyrie','Allergie aux barbituriques'],
+    ipc:'atracurium, suxaméthonium, ampho B, dropéridol, clindamycine',
+    ei:[{t:'',x:'Trouble de la conscience pouvant gêner l\'évaluation neuro (plus sédatif que la fosphénytoïne)'},{t:'F',x:'somnolence, troubles cognitifs, trouble du comportement, agitation, agressivité, nausées, dermatite allergique, vomissements'},{t:'G',x:'réactions cutanées graves'}]
+  },
+  induction:{
+    name:'Thiopental, induction', brand:'Pentothal®', cls:'Hypnotique barbiturique', sw:'thio', tab:'1,5 à 2,5 mg/kg',
+    pres:'Flacon poudre 500 mg et/ou 1 g, à reconstituer',
+    ind:'Induction et entretien de la sédation dans l\'état de mal épileptique.',
+    surv:['Scope, PA, FC, FR, SpO₂','Matériel de réanimation prêt à l\'emploi'],
+    ci:['Défaillance cardio-vasculaire, hypovolémie non compensée','Insuffisance hépatique, rénale et cardiaque sévère','Allergie aux barbituriques'],
+    ipc:'midazolam, cisatracurium, diltiazem, nicardipine',
+    ei:[{t:'',x:'Hypotension artérielle, troubles du rythme'},{t:'',x:'Dépression respiratoire, bronchospasme, hoquet'},{t:'',x:'Délire et confusion au réveil'},{t:'',x:'Nausées, vomissements, histaminolibération, tremblements, frissons'}],
+    eiTitle:'Effets secondaires'
+  },
+  sedation:{
+    name:'Thiopental, sédation', brand:'Pentothal®', cls:'Hypnotique barbiturique', sw:'thio', tab:'2 à 5 mg/kg/h',
+    pres:'Flacon poudre 500 mg/20 ml, à reconstituer',
+    ind:'Induction et entretien de la sédation pour les états de mal convulsif.',
+    surv:['Scope, PA, FC, FR, SpO₂','Matériel de réanimation prêt à l\'emploi'],
+    ci:['Défaillance cardio-vasculaire, hypovolémie non compensée','Insuffisance hépatique, rénale et cardiaque sévère','Allergie aux barbituriques, asthme'],
+    ipc:null,
+    ei:[{t:'',x:'Hypotension artérielle, troubles du rythme'},{t:'',x:'Dépression respiratoire, bronchospasme, hoquet, spasme laryngé'},{t:'',x:'Délire et confusion au réveil'},{t:'',x:'Nausées, vomissements, histaminolibération, tremblements, frissons'}],
+    eiTitle:'Effets secondaires'
+  }
+};
+const ORDER=['keppra','depakine','gardenal','induction','sedation'];
+
+const VIEW = {
+  keppra:(r,w)=>({
+    heroLabel:'Dose de charge', big:f(r.dose), unit:'mg', formula:r.capped?`Plafond de 4 500 mg atteint (60 mg/kg × ${f(w)} kg = ${f(r.raw)} mg)`:`60 mg/kg × ${f(w)} kg`,
+    metrics:[['À prélever',`${f(r.vol)} ml`,'100 mg/ml'],['Flacons de 500 mg',`${r.flacons}`,'calculé, 5 ml chacun'],['Poche','250 ml','NaCl 0,9 %'],['Durée','10 min','VVP de bon calibre']],
+    steps:[`Prélever <b>${f(r.vol)} ml</b> de lévétiracétam (${f(r.dose)} mg), soit ${r.flacons} flacon${r.flacons>1?'s':''} de 500 mg/5 ml.`,'Injecter dans une poche de <b>250 ml</b> de NaCl 0,9 %.','Passer en <b>10 min</b> sur une VVP de bon calibre, ouverte à fond.'],
+    alerts:r.capped?[['warn',`Dose plafonnée à 4 500 mg. Le calcul brut donnerait ${f(r.raw)} mg.`]]:[]
+  }),
+  depakine:(r,w)=>({
+    heroLabel:'Dose de charge', big:f(r.dose), unit:'mg', formula:r.capped?`Plafond de 3 000 mg atteint (40 mg/kg × ${f(w)} kg = ${f(r.raw)} mg)`:`40 mg/kg × ${f(w)} kg`,
+    metrics:[['À prélever',`${f(r.vol)} ml`,'100 mg/ml'],['Flacons de 400 mg',`${r.flacons}`,'calculé, 4 ml chacun'],['NaCl 0,9 % à ajouter',`${f(r.nacl)} ml`,'pour compléter à 50 ml'],['Vitesse','300 ml/h','50 ml en 10 min']],
+    steps:[`Reconstituer ${r.flacons} flacon${r.flacons>1?'s':''} de 400 mg (poudre + 4 ml de solvant).<em>Concentration de 100 mg/ml déduite de la fiche, cohérente avec les volumes du tableau.</em>`,`PSE : prélever <b>${f(r.vol)} ml</b> (${f(r.dose)} mg, sans dépasser 3 g).`,`Compléter à <b>50 ml</b> avec du NaCl 0,9 % (ajouter ${f(r.nacl)} ml).`,'Passer en <b>10 min</b>, soit <b>300 ml/h</b>.','Administrer la totalité de la dose même si la crise s\'arrête pendant l\'injection.'],
+    alerts:[['bad','Contre-indiqué chez les femmes enceintes et les femmes en âge de procréer.']].concat(r.capped?[['warn',`Dose plafonnée à 3 000 mg. Le calcul brut donnerait ${f(r.raw)} mg.`]]:[])
+  }),
+  gardenal:(r,w)=>({
+    heroLabel:'Dose de charge', big:f(r.dose), unit:'mg', formula:r.capped?`Dose de la fiche pour les poids > 80 kg (15 mg/kg × ${f(w)} kg = ${f(r.raw)} mg)`:`15 mg/kg × ${f(w)} kg`,
+    metrics:[['À prélever',`${f(r.vol)} ml`,'préparation à 20 mg/ml'],['Flacons de 200 mg',`${r.flacons}`,`${r.eppi} ml d'EPPI au total`],['NaCl 0,9 % à ajouter',`${f(r.nacl)} ml`,'pour compléter à 60 ml'],['Vitesse','180 ml/h','60 ml en 20 min'],['Débit',`${f(r.mgmin)} mg/min`,'maximum 100 mg/min']],
+    steps:[`Reconstituer <b>${r.flacons} flacon${r.flacons>1?'s':''}</b> de 200 mg, chacun dans <b>10 ml d'EPPI</b> (20 mg/ml).`,`Dans une seringue de 60 ml, prélever <b>${f(r.vol)} ml</b> de préparation.`,`Compléter à <b>60 ml</b> avec du NaCl 0,9 % (ajouter ${f(r.nacl)} ml).`,'PSE : passer en <b>20 min</b>, soit <b>180 ml/h</b>.','Administrer la totalité de la dose même si la crise s\'arrête pendant l\'injection.','Évaluer l\'efficacité 20 minutes après le début de la perfusion.'],
+    alerts:(r.capped?[['warn',`Dose limitée à 1 200 mg, valeur de la fiche pour les poids > 80 kg. Le calcul brut donnerait ${f(r.raw)} mg.`]]:[]).concat([['warn','Matériel de réanimation à proximité. Plus sédatif que la fosphénytoïne.']])
+  }),
+  induction:(r,w,o)=>({
+    heroLabel:r.f<1?'Bolus d\'induction (réduit de moitié)':'Bolus d\'induction', big:f(r.dose), unit:'mg',
+    formula:`${f(o.mgkg)} mg/kg × ${f(w)} kg${r.f<1?' ÷ 2':''}`,
+    metrics:[['À injecter',`${f(r.ml)} ml`,'25 mg/ml, IVD'],['Fourchette de la fiche',`${f(r.loMl)} à ${f(r.hiMl)} ml`,`${f(r.lo)} à ${f(r.hi)} mg`],['Puis, en relais','50 mg = 2 ml','toutes les 2 à 3 min']],
+    steps:[`Reconstituer <b>1 flacon de 500 mg</b> dans <b>20 ml</b> de NaCl 0,9 % (25 mg/ml).`,`Injecter <b>${f(r.ml)} ml</b> (${f(r.dose)} mg) en IVD sur une VVP dédiée.`,'Puis <b>50 mg (2 ml)</b> toutes les 2 à 3 min jusqu\'à disparition des crises.','Si vous disposez d\'un flacon de 1 g, garder la seringue pour la sédation.'].concat(r.dose>500?[`<b>Dose supérieure à 500 mg</b> : prévoir plusieurs flacons.`]:[]),
+    alerts:[['warn','Diminuer les doses de moitié chez l\'insuffisant rénal, l\'obèse, le sujet dénutri, le cirrhotique et le sujet âgé.'],['plain','La fiche ne précise pas si cette réduction s\'applique aussi aux bolus de 50 mg. À valider avec le médecin.']]
+  }),
+  sedation:(r,w,o)=>({
+    heroLabel:'Vitesse du PSE', big:f(r.rate), unit:'ml/h', formula:`${f(o.mgkgh)} mg/kg/h × ${f(w)} kg ÷ 10 mg/ml`,
+    metrics:[['Dose',`${f(r.mgh)} mg/h`,`${f(o.mgkgh)} mg/kg/h`],['Concentration','10 mg/ml','500 mg dans 50 ml'],['Une seringue de 50 ml dure',hm(r.hours),'à cette vitesse']],
+    steps:['Reconstituer <b>1 flacon de 500 mg</b> dans <b>50 ml</b> de NaCl 0,9 % (10 mg/ml).',`Régler le PSE à <b>${f(r.rate)} ml/h</b> (${f(o.mgkgh)} mg/kg/h).`,'Plage de la fiche : 2 à 5 mg/kg/h (voir le tableau plus bas).'],
+    alerts:[['warn','Matériel de réanimation prêt à l\'emploi. Surveillance scope, PA, FC, FR, SpO₂.']]
+  })
+};
+
+const state={id:'keppra',mgkg:2,half:false,mgkgh:3,dirty:false};
+const $=id=>sh.getElementById(id);
+
+function parseW(){
+  const v=parseFloat($('w').value.replace(',','.'));
+  return (isFinite(v)&&v>0&&v<=400)?v:null;
+}
+
+function buildTabs(){
+  $('tabs').innerHTML=ORDER.map(id=>{const s=STATIC[id];
+    return `<button class="tab" type="button" data-id="${id}" aria-pressed="${id===state.id}"><span class="dot" style="background:var(--sw-${s.sw})"></span><span><b>${s.name}</b><small>${s.tab}</small></span></button>`}).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{state.id=b.dataset.id;buildTabs();buildStatic();render();}));
+}
+
+function buildStatic(){
+  const s=STATIC[state.id];
+  $('head').innerHTML=`<div class="row"><span class="chip" style="background:var(--sw-${s.sw})"></span><h2>${s.name}</h2><span class="brand">${s.brand}</span></div>
+    <div class="pills"><span class="pill">${s.cls}</span>${s.off?'<span class="pill off" title="Pictogramme AMM barré sur la fiche">Hors AMM</span>':''}</div>
+    <p class="pres">${s.pres}</p><p class="ind"><b>Indication</b>${s.ind}</p>`;
+
+  const c=$('controls');
+  if(state.id==='induction'){
+    c.hidden=false;
+    c.innerHTML=`<div class="ctl"><label for="mgkg">Dose d'induction <output id="mgkgOut"></output></label><input type="range" id="mgkg" min="1.5" max="2.5" step="0.1" value="${state.mgkg}"><div class="rangeends"><span>1,5</span><span>2,5 mg/kg</span></div></div>
+    <label class="check" for="half"><input type="checkbox" id="half" ${state.half?'checked':''}><span>Réduire de moitié : insuffisant rénal, obèse, sujet dénutri, cirrhotique, sujet âgé</span></label>`;
+    $('mgkg').addEventListener('input',e=>{state.mgkg=Math.round(parseFloat(e.target.value)*10)/10;render();});
+    $('half').addEventListener('change',e=>{state.half=e.target.checked;render();});
+  }else if(state.id==='sedation'){
+    c.hidden=false;
+    c.innerHTML=`<div class="ctl"><label for="mgkgh">Dose d'entretien <output id="mgkghOut"></output></label><input type="range" id="mgkgh" min="2" max="5" step="0.5" value="${state.mgkgh}"><div class="rangeends"><span>2</span><span>5 mg/kg/h</span></div></div>`;
+    $('mgkgh').addEventListener('input',e=>{state.mgkgh=parseFloat(e.target.value);render();});
+  }else{c.hidden=true;c.innerHTML='';}
+
+  const li=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  let html='';
+  html+=`<details class="sec ci" open><summary>Contre-indications</summary><div class="body">${li(s.ci)}</div></details>`;
+  html+=`<details class="sec sv"><summary>Surveillance</summary><div class="body">${li(s.surv)}</div></details>`;
+  if(s.ipc) html+=`<details class="sec ipc"><summary>Incompatibilités physico-chimiques</summary><div class="body"><p style="margin:0">${s.ipc}</p></div></details>`;
+  html+=`<details class="sec ei"><summary>${s.eiTitle||'Effets indésirables'}</summary><div class="body">${li(s.ei.map(e=>(e.t?`<span class="tag">${e.t}</span>`:'')+e.x))}${s.prudence?`<p style="margin:10px 0 0"><b>Prudence</b> : ${s.prudence.replace(/^Prudence et surveillance /,'')}</p>`:''}</div></details>`;
+  $('info').innerHTML=html;
+}
+
+function tableHtml(id,w,idx){
+  const t=T[id];
+  const head=t.w.map((x,i)=>`<th scope="col" class="${i===idx?'hit':''}">${t.wl?t.wl[i]:x}</th>`).join('');
+  const rows=t.rows.map(r=>`<tr><th scope="row">${r.l}</th>${r.v.map((v,i)=>`<td class="${i===idx?'hit':''}">${nf.format(v)}</td>`).join('')}</tr>`).join('');
+  return `<div class="ficheT"><h3>Tableau de la fiche</h3><div class="scroll"><table><thead><tr><th scope="col">Poids (kg)</th>${head}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function render(){
+  const out=$('out'), w=parseW();
+  if($('mgkgOut')) $('mgkgOut').textContent=f(state.mgkg)+' mg/kg';
+  if($('mgkghOut')) $('mgkghOut').textContent=f(state.mgkgh)+' mg/kg/h';
+  if(w===null){ out.innerHTML='<div class="empty">Saisissez un poids valide, en kilogrammes.</div>'; return; }
+
+  const id=state.id, res=compute(id,w,state), v=VIEW[id](res,w,state);
+  const fct=id==='induction'?res.f:1;
+  const chk=check(id,w,res,fct), t=T[id];
+
+  const alerts=[];
+  if(w<40) alerts.push(['bad',`Poids inférieur à 40 kg. Ces fiches concernent l'adulte. Vérifier le poids et la posologie avec le médecin.`]);
+  else if(w>200) alerts.push(['warn','Poids supérieur à 200 kg. Vérifier la saisie.']);
+  v.alerts.forEach(a=>alerts.push(a));
+
+  if(chk.status==='ok') alerts.push(['ok',`Résultat identique à la fiche pour ${f(w)} kg.`]);
+  else if(chk.status==='diff') alerts.push(['bad',`Écart avec le tableau de la fiche : ${chk.bad.map(b=>`${b.row} calculé ${f(b.got)}, fiche ${f(b.exp)}`).join(' ; ')}. Ne pas utiliser sans vérifier.`]);
+  else if(outOfRange(t,w)) alerts.push(['warn',`Poids hors du tableau de la fiche (${t.min}${t.max?` à ${t.max} kg`:' kg et plus'}). Valeurs calculées par la formule, à vérifier.`]);
+  else alerts.push(['plain','Poids intermédiaire, absent du tableau de la fiche. Valeurs calculées par la formule.']);
+
+  out.innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="hero"><span class="label-caps">${v.heroLabel}</span><span class="big">${v.big}<small>${v.unit}</small></span><span class="formula">${v.formula}</span></div>
+      <dl class="metrics">${v.metrics.map(m=>`<div><dt>${m[0]}</dt><dd>${m[1]}${m[2]?`<small>${m[2]}</small>`:''}</dd></div>`).join('')}</dl>
+      <div><h3 class="label-caps" style="margin-bottom:10px">Préparation</h3><ol class="steps">${v.steps.map(s=>`<li><span>${s}</span></li>`).join('')}</ol></div>
+      <div class="alerts">${alerts.map(a=>`<div class="alert ${a[0]}">${a[1]}</div>`).join('')}</div>
+      ${tableHtml(id,w,chk.idx===undefined?-1:chk.idx)}
+    </div>`;
+}
+
+$('w').addEventListener('input',()=>{
+  if(!state.dirty){state.dirty=true;$('whint').hidden=true;}
+  render();
+});
+buildTabs();buildStatic();render();
+}
+function renderDoses(){
+  app.innerHTML='<div id="dzhost"></div>';
+  const host=document.getElementById("dzhost");
+  const sh=host.attachShadow({mode:"open"});
+  sh.innerHTML="<style>"+DZ_CSS+"</style><div class=\"dzroot\">"+DZ_HTML+"</div>";
+  const root=sh.querySelector(".dzroot"), th=document.documentElement.getAttribute("data-theme");
+  if(th) root.setAttribute("data-theme",th);
+  DZ_INIT(sh);
+}
+
+function go(v){state.view=v;setTabs(v);if(v==="quiz")renderQuiz();else if(v==="doses")renderDoses();else renderList(v==="fav");window.scrollTo(0,0)}
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{if(location.hash)history.replaceState(null,"",location.pathname+location.search);go(b.dataset.view)});
 document.getElementById("home").onclick=()=>{state.cat=null;state.q="";if(location.hash)history.replaceState(null,"",location.pathname+location.search);go("list")};
-function route(){const id=location.hash.slice(1);if(id&&F.some(f=>f.id===id)){setTabs("list");renderFiche(id)}else go(state.view)}
+function route(){const id=location.hash.slice(1);if(id==="doses"){go("doses");return}if(id&&F.some(f=>f.id===id)){setTabs("list");renderFiche(id)}else go(state.view)}
 window.addEventListener("hashchange",route);
+const setHdr=()=>{const h=document.querySelector("header.top");if(h)document.documentElement.style.setProperty("--hdr",(h.offsetHeight)+"px")};
+setHdr();window.addEventListener("resize",setHdr);
 route();
 </script>
 
