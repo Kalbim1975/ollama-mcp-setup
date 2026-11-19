@@ -12,12 +12,32 @@ signes, examens, traitement, rôle infirmier, signes d'alerte et question de par
 | Chemin | Rôle |
 |---|---|
 | `app/index.html` | Application web autonome (recherche, filtres, favoris, quiz). Toutes les fiches sont dans le tableau `F`. |
+| `app/manifest.webmanifest`, `app/sw.js`, `app/icon-*.png` | Rendent l'application installable sur téléphone et utilisable hors connexion. |
+| `index.html` | Redirige vers la page de vente. |
 | `vente/index.html` | Page de vente générée (prête à héberger). |
 | `vente/template.html` | Modèle de la page de vente (à modifier, puis régénérer). |
 | `vente/apercu.jpg` | Capture affichée sur la page de vente. |
 | `Soignote-fiches.pdf` | PDF A4 : couverture, sommaire, une fiche par page. |
 | `scripts/generer-pdf.js` | Régénère le PDF depuis l'application. |
 | `scripts/generer-vente.py` | Régénère la page de vente (comptes et prix). |
+
+## Mise en ligne (GitHub Pages, gratuit)
+
+1. Sur GitHub : **Settings → Pages → Build and deployment → Source : Deploy from a branch**.
+2. Choisir la branche **main** et le dossier **/ (root)**, puis **Save**.
+3. Après une à deux minutes :
+   - application : `https://kalbim1975.github.io/ollama-mcp-setup/soignote/app/`
+   - page de vente : `https://kalbim1975.github.io/ollama-mcp-setup/soignote/vente/`
+
+## Installer l'application sur un téléphone
+
+- **iPhone (Safari)** : ouvrir l'adresse de l'application → bouton Partager → « Sur l'écran d'accueil ».
+- **Android (Chrome)** : ouvrir l'adresse → menu ⋮ → « Installer l'application » (ou « Ajouter à l'écran d'accueil »).
+
+Après une première ouverture avec Internet, l'application fonctionne hors connexion.
+
+> ⚠️ Le dépôt est public : l'application et le PDF y sont téléchargeables gratuitement. Pour vendre,
+> déplacer le contenu payant dans un dépôt privé ou sur une plateforme de vente.
 
 ## Modifier ou ajouter une fiche
 
