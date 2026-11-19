@@ -156,6 +156,9 @@ body.printing .note{display:none}
 body.printing a[href="#doses"]{display:none}
 body.printing .flow span.step{font-size:10.5px;padding:3px 8px}
 body.printing .map svg{max-width:70px}
+.subtabs{display:flex;gap:6px;flex-wrap:wrap;padding-top:16px}
+.subtabs .tab{text-decoration:none;display:inline-block}
+.subtabs .smur{border-style:dashed}
 @media (max-width:640px){.fgrid{grid-template-columns:minmax(0,1fr) 92px;gap:10px}.blocks{grid-template-columns:minmax(0,1fr)} nav.tabs{margin-left:0;width:100%}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -1805,7 +1808,7 @@ function ficheHTML(f,fav,done){
       <div class="blk wide qbox"><h3>Question de partiel</h3><p style="margin:0">${esc(f.q.q)}</p>
         <button class="btn primary reveal" id="rev">Voir la réponse</button><div class="answer" id="ans" hidden>${esc(f.q.a)}</div></div>
     </div>
-    ${f.id==="epi"?`<p style="margin-top:14px"><a class="btn primary" href="#doses" style="text-decoration:none;display:inline-block">Calculer les doses de l'état de mal</a></p>`:""}
+    ${f.id==="epi"?`<p style="margin-top:14px"><a class="btn primary" href="#doses" onclick="dosesSub='edm'" style="text-decoration:none;display:inline-block">Calculer les doses de l'état de mal</a></p>`:""}
     <p class="note">Support de révision synthétique : il ne remplace ni tes cours, ni les protocoles de ton service, ni la prescription médicale.</p>
   </article>`;
 }
@@ -2097,14 +2100,136 @@ $('w').addEventListener('input',()=>{
 });
 buildTabs();buildStatic();render();
 }
-function renderDoses(){
-  app.innerHTML='<div id="dzhost"></div>';
+
+/* ===== Calculs infirmiers (issus de « Dilutions injectables »), isolés dans un Shadow DOM ===== */
+const CI_CSS=" .dzroot {\n  --bg: #f2f5f4; --surface: #ffffff; --raised: #f8faf9; --ink: #10201c; --muted: #5b6c68; --line: #d9e2df;\n  --accent: #0b6b5c; --accent-ink: #ffffff; --accent-soft: #e0f0eb; --accent-text: #0a5c4f;\n  --warn-bg: #fff3d4; --warn: #774f00; --danger: #b42318; --danger-soft: #fde8e6; --ok-soft: #dcf2ea; --ok: #0d6a4f;\n  --mark: rgba(255, 190, 0, .24); --shadow: 0 1px 2px rgba(16, 32, 28, .06), 0 4px 14px rgba(16, 32, 28, .05);\n  --f-body: \"IBM Plex Sans\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif;\n  --f-head: \"IBM Plex Sans Condensed\", \"Arial Narrow\", system-ui, sans-serif;\n  --f-num: \"IBM Plex Mono\", ui-monospace, Menlo, Consolas, monospace;\n  --nav-h: 64px;\n}\n@media (prefers-color-scheme: dark) {\n  .dzroot:not([data-theme=\"light\"]) {\n    --bg: #0c1412; --surface: #141f1c; --raised: #1a2724; --ink: #e5eeeb; --muted: #95a8a3; --line: #263531;\n    --accent: #38c6a4; --accent-ink: #062019; --accent-soft: #123a31; --accent-text: #62d9bb;\n    --warn-bg: #3a2d0e; --warn: #ffd57a; --danger: #ff7a6b; --danger-soft: #3d1a17; --ok-soft: #123a2e; --ok: #6fdcb6;\n    --mark: rgba(255, 190, 0, .28); --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;\n  }\n}\n.dzroot[data-theme=\"dark\"] {\n  --bg: #0c1412; --surface: #141f1c; --raised: #1a2724; --ink: #e5eeeb; --muted: #95a8a3; --line: #263531;\n  --accent: #38c6a4; --accent-ink: #062019; --accent-soft: #123a31; --accent-text: #62d9bb;\n  --warn-bg: #3a2d0e; --warn: #ffd57a; --danger: #ff7a6b; --danger-soft: #3d1a17; --ok-soft: #123a2e; --ok: #6fdcb6;\n  --mark: rgba(255, 190, 0, .28); --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;\n}\n* { box-sizing: border-box; }\n[hidden]{display:none!important}\n.dzroot { --f-body: \"Atkinson Hyperlegible\", system-ui, sans-serif; --f-head: \"Bricolage Grotesque\", system-ui, sans-serif; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--f-body); padding-block: 16px 40px; }\n.dzroot h1 { margin: 0 0 4px; font: 800 1.5rem/1.2 var(--f-head); }\nbutton, input, select { font: inherit; color: inherit; }\n:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }\n.lead { display: flex; gap: 10px; align-items: flex-start; background: var(--raised); border: 1px solid var(--line); border-radius: 12px;\n  padding: 10px 12px; font-size: 13px; color: var(--muted); margin: 0 0 14px; }\n.lead svg { flex: none; width: 18px; height: 18px; color: var(--accent); margin-top: 1px; }\ninput, select { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; min-width: 0; }\ninput:focus, select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }\n.filled { border-color: var(--accent) !important; background: var(--accent-soft) !important; }\n.calcs { display: grid; gap: 12px; }\n@media (min-width: 760px) { .calcs { grid-template-columns: 1fr 1fr; } }\nsection.calc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; min-width: 0; }\nsection.calc h2 { margin: 0 0 2px; font: 700 17px/1.25 var(--f-head); display: flex; align-items: center; gap: 8px; }\nsection.calc h2 svg { width: 20px; height: 20px; color: var(--accent); flex: none; }\nsection.calc p.help { margin: 0 0 12px; color: var(--muted); font-size: 13px; }\n.row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }\n.row label { flex: 1 0 100%; font-size: 13px; font-weight: 500; color: var(--muted); }\n.row input { flex: 1 1 80px; font-family: var(--f-num); }\n.row select { flex: 0 1 auto; }\n.row span.u { color: var(--muted); font-size: 14px; }\n.res { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); min-height: 52px; }\n.res strong { display: block; font: 600 24px/1.2 var(--f-num); color: var(--accent-text); }\n.res small { display: block; color: var(--ink); opacity: .8; margin-top: 4px; font-size: 13px; }\n.res.err { background: var(--warn-bg); }\n.res.err strong { font: 600 15px var(--f-body); color: var(--warn); }\n.res:empty::before { content: \"Le résultat s'affiche ici.\"; color: var(--muted); font-size: 13px; }";
+const CI_HTML="<h1>Calculs infirmiers<\/h1>\n  <p class=\"lead\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 3l9 16H3z\"/><path d=\"M12 10v4M12 17h.01\"/><\/svg><span>Aide au calcul. Double contrôle de chaque résultat avant toute préparation.<\/span><\/p>\n  <div class=\"calcs\">\n  <section class=\"calc\" id=\"c1\">\n    <h2><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M18 2l4 4M20 4l-3.5 3.5M16.5 7.5L8 16l-3-3 8.5-8.5M5 13l-3 3\"/><\/svg>Volume à prélever<\/h2>\n    <p class=\"help\">Dose prescrite et concentration de l'ampoule ou du flacon reconstitué.<\/p>\n    <div class=\"row\"><label for=\"c1-dose\">Dose prescrite<\/label><input id=\"c1-dose\" inputmode=\"decimal\" data-k=\"dose\" placeholder=\"ex. 5\"><select id=\"c1-udose\" data-k=\"udose\" aria-label=\"Unité de la dose\"><\/select><\/div>\n    <div class=\"row\"><label for=\"c1-qte\">Ampoule / flacon : quantité dans volume<\/label><input id=\"c1-qte\" inputmode=\"decimal\" data-k=\"qte\"><select id=\"c1-uqte\" data-k=\"uqte\" aria-label=\"Unité\"><\/select><span class=\"u\">dans<\/span><input id=\"c1-vol\" inputmode=\"decimal\" data-k=\"vol\" aria-label=\"Volume en mL\"><span class=\"u\">mL<\/span><\/div>\n    <div class=\"res\"><\/div>\n  <\/section>\n\n  <section class=\"calc\" id=\"c2\">\n    <h2><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3\"/><path d=\"M7 15h10\"/><\/svg>Dilution et concentration finale<\/h2>\n    <p class=\"help\">Quantité de médicament, volume qu'elle occupe, volume final voulu.<\/p>\n    <div class=\"row\"><label for=\"c2-qte\">Quantité de médicament<\/label><input id=\"c2-qte\" inputmode=\"decimal\" data-k=\"qte\"><select id=\"c2-uqte\" data-k=\"uqte\" aria-label=\"Unité\"><\/select><\/div>\n    <div class=\"row\"><label for=\"c2-vmed\">Volume du médicament prélevé<\/label><input id=\"c2-vmed\" inputmode=\"decimal\" data-k=\"vmed\"><span class=\"u\">mL<\/span><\/div>\n    <div class=\"row\"><label for=\"c2-vfin\">Volume final (seringue ou poche)<\/label><input id=\"c2-vfin\" inputmode=\"decimal\" data-k=\"vfin\"><span class=\"u\">mL<\/span><\/div>\n    <div class=\"res\"><\/div>\n  <\/section>\n\n  <section class=\"calc\" id=\"c3\">\n    <h2><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"8\" width=\"16\" height=\"8\" rx=\"1.5\"/><path d=\"M18 12h4M6 8v8M10 8v8\"/><\/svg>Débit de seringue électrique (SAP)<\/h2>\n    <p class=\"help\">Posologie prescrite et contenu de la seringue.<\/p>\n    <div class=\"row\"><label for=\"c3-poso\">Posologie prescrite<\/label><input id=\"c3-poso\" inputmode=\"decimal\" data-k=\"poso\"><select id=\"c3-uposo\" data-k=\"uposo\" aria-label=\"Unité de posologie\">\n      <option value=\"mg|h|0\">mg/h<\/option><option value=\"µg|h|0\">µg/h<\/option><option value=\"µg|min|0\">µg/min<\/option>\n      <option value=\"µg|min|1\">µg/kg/min<\/option><option value=\"µg|h|1\">µg/kg/h<\/option><option value=\"mg|h|1\">mg/kg/h<\/option>\n      <option value=\"g|h|0\">g/h<\/option><option value=\"UI|h|0\">UI/h<\/option><option value=\"UI|h|1\">UI/kg/h<\/option><\/select><\/div>\n    <div class=\"row\" data-poids><label for=\"c3-poids\">Poids du patient<\/label><input id=\"c3-poids\" inputmode=\"decimal\" data-k=\"poids\"><span class=\"u\">kg<\/span><\/div>\n    <div class=\"row\"><label for=\"c3-qte\">Seringue : quantité dans volume<\/label><input id=\"c3-qte\" inputmode=\"decimal\" data-k=\"qte\"><select id=\"c3-uqte\" data-k=\"uqte\" aria-label=\"Unité\"><\/select><span class=\"u\">dans<\/span><input id=\"c3-vol\" inputmode=\"decimal\" data-k=\"vol\" aria-label=\"Volume en mL\"><span class=\"u\">mL<\/span><\/div>\n    <div class=\"res\"><\/div>\n  <\/section>\n\n  <section class=\"calc\" id=\"c4\">\n    <h2><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M7 2h10v7a5 5 0 01-10 0z\"/><path d=\"M12 14v3M12 20h.01M12 22h.01\"/><\/svg>Débit de perfusion<\/h2>\n    <p class=\"help\">Volume à passer et durée.<\/p>\n    <div class=\"row\"><label for=\"c4-vol\">Volume à perfuser<\/label><input id=\"c4-vol\" inputmode=\"decimal\" data-k=\"vol\"><span class=\"u\">mL<\/span><\/div>\n    <div class=\"row\"><label for=\"c4-h\">Durée<\/label><input id=\"c4-h\" inputmode=\"decimal\" data-k=\"h\" aria-label=\"Heures\"><span class=\"u\">h<\/span><input id=\"c4-min\" inputmode=\"decimal\" data-k=\"min\" aria-label=\"Minutes\"><span class=\"u\">min<\/span><\/div>\n    <div class=\"row\"><label for=\"c4-gtt\">Perfuseur<\/label><select id=\"c4-gtt\" data-k=\"gtt\">\n      <option value=\"20\">Standard : 20 gouttes/mL<\/option><option value=\"15\">Transfuseur : 15 gouttes/mL<\/option><option value=\"60\">Métrique pédiatrique : 60 gouttes/mL<\/option><\/select><\/div>\n    <div class=\"res\"><\/div>\n  <\/section>\n\n  <section class=\"calc\" id=\"c5\">\n    <h2><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/><\/svg>Score de Glasgow<\/h2>\n    <p class=\"help\">Meilleure réponse pour chaque item.<\/p>\n    <div class=\"row\"><label for=\"c5-y\">Ouverture des yeux (Y)<\/label><select id=\"c5-y\" data-k=\"y\"><option value=\"4\">4 · spontanée<\/option><option value=\"3\">3 · au bruit<\/option><option value=\"2\">2 · à la douleur<\/option><option value=\"1\">1 · nulle<\/option><\/select><\/div>\n    <div class=\"row\"><label for=\"c5-v\">Réponse verbale (V)<\/label><select id=\"c5-v\" data-k=\"v\"><option value=\"5\">5 · orientée<\/option><option value=\"4\">4 · confuse<\/option><option value=\"3\">3 · inappropriée<\/option><option value=\"2\">2 · incompréhensible<\/option><option value=\"1\">1 · nulle<\/option><\/select><\/div>\n    <div class=\"row\"><label for=\"c5-m\">Réponse motrice (M)<\/label><select id=\"c5-m\" data-k=\"m\"><option value=\"6\">6 · aux ordres<\/option><option value=\"5\">5 · orientée<\/option><option value=\"4\">4 · évitement<\/option><option value=\"3\">3 · flexion stéréotypée<\/option><option value=\"2\">2 · extension stéréotypée<\/option><option value=\"1\">1 · nulle<\/option><\/select><\/div>\n    <div class=\"res\"><\/div>\n  <\/section>\n\n  <section class=\"calc\" id=\"c6\">\n    <h2><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"7\" y=\"6\" width=\"10\" height=\"16\" rx=\"4\"/><path d=\"M10 2h4v4h-4z\"/><\/svg>Autonomie d'une bouteille d'O<sub>2<\/sub><\/h2>\n    <p class=\"help\">Pression × volume ÷ débit, moins 10 % de sécurité.<\/p>\n    <div class=\"row\"><label for=\"c6-bar\">Pression lue<\/label><input id=\"c6-bar\" inputmode=\"decimal\" data-k=\"bar\" value=\"200\"><span class=\"u\">bar<\/span><\/div>\n    <div class=\"row\"><label for=\"c6-vb\">Volume de la bouteille<\/label><select id=\"c6-vb\" data-k=\"vb\"><option value=\"5\">B5 · 5 L<\/option><option value=\"2\">B2 · 2 L<\/option><option value=\"15\">B15 · 15 L<\/option><\/select><\/div>\n    <div class=\"row\"><label for=\"c6-deb\">Débit d'O<sub>2<\/sub><\/label><input id=\"c6-deb\" inputmode=\"decimal\" data-k=\"deb\" value=\"6\"><span class=\"u\">L/min<\/span><\/div>\n    <div class=\"res\"><\/div>\n  <\/section>\n  <\/div>";
+function CI_INIT(sh){
+const $ = (s, r = sh) => r.querySelector(s);
+const UNITS = { 'g': ['m', 1000], 'mg': ['m', 1], 'µg': ['m', 0.001], 'UI': ['u', 1], 'millions UI': ['u', 1e6] };
+sh.querySelectorAll('select[data-k="udose"], select[data-k="uqte"]').forEach((s) => {
+  for (const u of Object.keys(UNITS)) s.add(new Option(u, u));
+  s.value = 'mg';
+});
+const num = (v) => { const x = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(x) ? x : NaN; };
+const fmt = (x) => {
+  const a = Math.abs(x);
+  return x.toLocaleString('fr-FR', { maximumFractionDigits: a >= 100 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3 });
+};
+// Meilleure unité de masse pour l'affichage (valeur en mg)
+const mass = (mg) => mg >= 1000 ? fmt(mg / 1000) + ' g' : mg >= 1 ? fmt(mg) + ' mg' : fmt(mg * 1000) + ' µg';
+const qtyText = (v, fam) => fam === 'm' ? mass(v) : fmt(v) + ' UI';
+
+function calc(id, fn) {
+  const box = $('#' + id), res = $('.res', box);
+  const run = () => {
+    const v = {};
+    box.querySelectorAll('[data-k]').forEach((el) => { v[el.dataset.k] = el.value; });
+    let out;
+    try { out = fn(v, box); } catch (e) { out = { err: e.message }; }
+    res.className = 'res' + (out && out.err ? ' err' : '');
+    res.textContent = '';
+    if (!out) return;
+    const s = document.createElement('strong'); s.textContent = out.err || out.main; res.append(s);
+    for (const line of out.lines || []) { const sm = document.createElement('small'); sm.textContent = line; res.append(sm); }
+  };
+  box.addEventListener('input', run); box.addEventListener('change', run); run();
+}
+const need = (...xs) => xs.some((x) => isNaN(x));
+const positive = (...xs) => { if (xs.some((x) => x <= 0)) throw new Error('Les valeurs doivent être supérieures à 0.'); };
+function sameFamily(u1, u2) {
+  if (UNITS[u1][0] !== UNITS[u2][0]) throw new Error('Unités incompatibles : masse (g, mg, µg) et UI ne se convertissent pas.');
+  return UNITS[u1][0];
+}
+
+const fVol = (v) => {
+  const d = num(v.dose), q = num(v.qte), vol = num(v.vol);
+  if (need(d, q, vol)) return null;
+  positive(d, q, vol);
+  const fam = sameFamily(v.udose, v.uqte);
+  const dose = d * UNITS[v.udose][1], conc = q * UNITS[v.uqte][1] / vol, ml = dose / conc;
+  return { main: fmt(ml) + ' mL à prélever', lines: [
+    'Concentration : ' + qtyText(conc, fam) + '/mL',
+    'Calcul : ' + qtyText(dose, fam) + ' ÷ ' + qtyText(conc, fam) + '/mL = ' + fmt(ml) + ' mL',
+    ml > vol ? 'Attention : ce volume dépasse une ampoule (' + fmt(ml / vol) + ' ampoules ou flacons).' : '' ].filter(Boolean) };
+};
+calc('c1', fVol);
+
+calc('c2', (v) => {
+  const q = num(v.qte), vm = num(v.vmed), vf = num(v.vfin);
+  if (need(q, vf)) return null;
+  positive(q, vf);
+  const fam = UNITS[v.uqte][0], conc = q * UNITS[v.uqte][1] / vf;
+  const lines = ['Calcul : ' + qtyText(q * UNITS[v.uqte][1], fam) + ' ÷ ' + fmt(vf) + ' mL'];
+  if (!isNaN(vm)) {
+    if (vm < 0 || vm > vf) throw new Error('Le volume du médicament doit être compris entre 0 et le volume final.');
+    lines.unshift('Solvant à ajouter : ' + fmt(vf - vm) + ' mL (' + fmt(vf) + ' − ' + fmt(vm) + ')');
+  }
+  return { main: qtyText(conc, fam) + '/mL', lines };
+});
+
+const fSap = (v, box) => {
+  const [unit, per, kg] = v.uposo.split('|');
+  if (box) $('[data-poids]', box).style.display = kg === '1' ? '' : 'none';
+  const p = num(v.poso), q = num(v.qte), vol = num(v.vol), w = kg === '1' ? num(v.poids) : 1;
+  if (need(p, q, vol, w)) return null;
+  positive(p, q, vol, w);
+  const fam = sameFamily(unit, v.uqte);
+  const perHour = p * UNITS[unit][1] * w * (per === 'min' ? 60 : 1);
+  const conc = q * UNITS[v.uqte][1] / vol, rate = perHour / conc;
+  return { main: fmt(rate) + ' mL/h', lines: [
+    'Dose horaire : ' + qtyText(perHour, fam) + '/h',
+    'Concentration de la seringue : ' + qtyText(conc, fam) + '/mL',
+    'Calcul : ' + qtyText(perHour, fam) + '/h ÷ ' + qtyText(conc, fam) + '/mL = ' + fmt(rate) + ' mL/h',
+    'Autonomie de la seringue : ' + fmt(vol / rate) + ' h' ] };
+};
+calc('c3', fSap);
+
+const fPerf = (v) => {
+  const vol = num(v.vol), h = v.h === '' ? 0 : num(v.h), m = v.min === '' ? 0 : num(v.min);
+  if (need(vol, h, m) || (v.h === '' && v.min === '')) return null;
+  const hours = h + m / 60;
+  positive(vol, hours);
+  const rate = vol / hours, g = +v.gtt, gpm = vol * g / (hours * 60);
+  return { main: fmt(rate) + ' mL/h', lines: [
+    Math.round(gpm) + ' gouttes/min (' + g + ' gouttes/mL), soit 1 goutte toutes les ' + fmt(60 / gpm) + ' s',
+    'Calcul : ' + fmt(vol) + ' mL ÷ ' + fmt(hours) + ' h ; ' + fmt(vol) + ' × ' + g + ' ÷ ' + fmt(hours * 60) + ' min' ] };
+};
+calc('c4', fPerf);
+
+calc('c5', (v) => {
+  const t = +v.y + +v.v + +v.m;
+  return { main: 'GCS ' + t + ' / 15', lines: ['Y' + v.y + ' V' + v.v + ' M' + v.m,
+    t <= 8 ? 'GCS ≤ 8 : coma grave, protection des voies aériennes à discuter.' : t <= 12 ? 'Altération modérée de la conscience.' : 'Altération légère ou conscience normale.'] };
+});
+calc('c6', (v) => {
+  const b = num(v.bar), d = num(v.deb), vb = +v.vb;
+  if (need(b, d)) return null;
+  positive(b, d);
+  const min = b * vb / d * 0.9;
+  const hh = Math.floor(min / 60), mm = Math.round(min % 60);
+  return { main: (hh ? hh + ' h ' : '') + String(mm).padStart(hh ? 2 : 1, '0') + ' min', lines: [
+    'Calcul : ' + fmt(b) + ' bar × ' + vb + ' L ÷ ' + fmt(d) + ' L/min = ' + fmt(b * vb / d) + ' min, − 10 % = ' + fmt(min) + ' min'] };
+});
+}
+const SMUR_URL="https://claude.ai/artifact/HwPfRtBN2WFPt8soEYBva9";
+let dosesSub="calc";
+function mountShadow(css,html,init){
   const host=document.getElementById("dzhost");
-  const sh=host.attachShadow({mode:"open"});
-  sh.innerHTML="<style>"+DZ_CSS+"</style><div class=\"dzroot\">"+DZ_HTML+"</div>";
-  const root=sh.querySelector(".dzroot"), th=document.documentElement.getAttribute("data-theme");
-  if(th) root.setAttribute("data-theme",th);
-  DZ_INIT(sh);
+  const sh=host.shadowRoot||host.attachShadow({mode:"open"});
+  sh.innerHTML="<style>"+css+"</style><div class=\"dzroot\">"+html+"</div>";
+  const th=document.documentElement.getAttribute("data-theme");
+  if(th) sh.querySelector(".dzroot").setAttribute("data-theme",th);
+  init(sh);
+}
+function renderDoses(){
+  app.innerHTML=`<nav class="subtabs" aria-label="Outils de calcul">
+    <button class="tab" data-sub="calc" aria-pressed="${dosesSub==="calc"}">Calculs infirmiers</button>
+    <button class="tab" data-sub="edm" aria-pressed="${dosesSub==="edm"}">État de mal</button>
+    <a class="tab smur" href="${SMUR_URL}" target="_blank" rel="noopener">Fiches SMUR ↗</a>
+  </nav><div id="dzhost"></div>`;
+  app.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{dosesSub=b.dataset.sub;renderDoses()});
+  if(dosesSub==="edm") mountShadow(DZ_CSS,DZ_HTML,DZ_INIT); else mountShadow(CI_CSS,CI_HTML,CI_INIT);
 }
 
 function go(v){state.view=v;setTabs(v);if(v==="quiz")renderQuiz();else if(v==="doses")renderDoses();else renderList(v==="fav");window.scrollTo(0,0)}

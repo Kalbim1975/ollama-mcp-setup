@@ -11,7 +11,7 @@ signes, examens, traitement, rôle infirmier, signes d'alerte et question de par
 
 | Chemin | Rôle |
 |---|---|
-| `app/index.html` | Application web autonome (recherche, filtres, favoris, quiz, calcul de doses de l'état de mal épileptique). Toutes les fiches sont dans le tableau `F`. |
+| `app/index.html` | Application web autonome (recherche, filtres, favoris, quiz, calculs infirmiers, doses de l'état de mal épileptique, lien vers les fiches SMUR). Toutes les fiches sont dans le tableau `F`. |
 | `app/manifest.webmanifest`, `app/sw.js`, `app/icon-*.png` | Rendent l'application installable sur téléphone et utilisable hors connexion. |
 | `index.html` | Redirige vers la page de vente. |
 | `vente/index.html` | Page de vente générée (prête à héberger). |
